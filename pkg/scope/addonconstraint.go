@@ -77,7 +77,7 @@ func (s *AddonConstraintScope) PatchObject(ctx context.Context) error {
 	)
 }
 
-// Close closes the current scope persisting the clusterprofile configuration and status.
+// Close closes the current scope persisting the addonConstraint configuration and status.
 func (s *AddonConstraintScope) Close(ctx context.Context) error {
 	return s.PatchObject(ctx)
 }

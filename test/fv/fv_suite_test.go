@@ -141,4 +141,19 @@ var _ = BeforeSuite(func() {
 		return k8sClient.Update(context.TODO(), currentCluster)
 	})
 	Expect(err).To(BeNil())
+
+	Byf("Verifying cluster is annotate since there is no AddonConstraint yet")
+	Eventually(func() bool {
+		currentCluster := &clusterv1.Cluster{}
+		Expect(k8sClient.Get(context.TODO(),
+			types.NamespacedName{Namespace: kindWorkloadCluster.Namespace, Name: kindWorkloadCluster.Name},
+			currentCluster)).To(Succeed())
+
+		currentAnnotations := currentCluster.Annotations
+		if currentAnnotations == nil {
+			return false
+		}
+		_, ok := currentAnnotations[libsveltosv1alpha1.GetClusterAnnotation()]
+		return ok
+	}, timeout, pollingInterval).Should(BeTrue())
 })

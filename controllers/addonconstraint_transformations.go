@@ -205,10 +205,10 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForCluster(
 	// Iterate over all current AddonConstraint and reconcile the AddonConstraint now
 	// matching the Cluster
 	for k := range r.AddonConstraints {
-		clusterProfileSelector := r.AddonConstraints[k]
-		parsedSelector, _ := labels.Parse(string(clusterProfileSelector))
+		addonConstraintSelector := r.AddonConstraints[k]
+		parsedSelector, _ := labels.Parse(string(addonConstraintSelector))
 		if parsedSelector.Matches(labels.Set(cluster.GetLabels())) {
-			l := logger.WithValues("clusterProfile", k.Name)
+			l := logger.WithValues("addonConstraint", k.Name)
 			l.V(logs.LogDebug).Info("queuing AddonConstraint")
 			requests = append(requests, ctrl.Request{
 				NamespacedName: client.ObjectKey{
@@ -267,10 +267,10 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForMachine(
 		// Iterate over all current AddonConstraint and reconcile the AddonConstraint now
 		// matching the Cluster
 		for k := range r.AddonConstraints {
-			clusterProfileSelector := r.AddonConstraints[k]
-			parsedSelector, _ := labels.Parse(string(clusterProfileSelector))
+			addonConstraintSelector := r.AddonConstraints[k]
+			parsedSelector, _ := labels.Parse(string(addonConstraintSelector))
 			if parsedSelector.Matches(labels.Set(clusterLabels)) {
-				l := logger.WithValues("clusterProfile", k.Name)
+				l := logger.WithValues("addonConstraint", k.Name)
 				l.V(logs.LogDebug).Info("queuing AddonConstraint")
 				requests = append(requests, ctrl.Request{
 					NamespacedName: client.ObjectKey{

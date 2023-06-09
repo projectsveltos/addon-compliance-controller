@@ -23,7 +23,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -129,8 +131,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 
 		addonConstraint = &libsveltosv1alpha1.AddonConstraint{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespace,
-				Name:      randomString(),
+				Name: randomString(),
 			},
 		}
 	})
@@ -443,6 +444,68 @@ var _ = Describe("AddonConstraint Controller", func() {
 		Expect(err).To(BeNil())
 		Expect(result).ToNot(BeNil())
 		Expect(len(result)).To(Equal(2))
+	})
+
+	It("Reconciliation updates manager.addonConstraints", func() {
+		sveltosCluster := &libsveltosv1alpha1.SveltosCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: randomString(),
+				Name:      randomString(),
+			},
+		}
+
+		clusterRef := corev1.ObjectReference{
+			Namespace:  sveltosCluster.Namespace,
+			Name:       sveltosCluster.Name,
+			Kind:       libsveltosv1alpha1.SveltosClusterKind,
+			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
+		}
+
+		initObjects := []client.Object{
+			addonConstraint,
+			sveltosCluster,
+		}
+
+		addonConstraintInfo := &corev1.ObjectReference{
+			Name:       addonConstraint.Name,
+			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
+		}
+
+		// Set managet so that for cluster, this AddonConstraint instance
+		// was marked as a match
+		controllers.Reset()
+		manager := controllers.GetManager()
+		m := manager.GetMap()
+		s := &libsveltosset.Set{}
+		s.Insert(addonConstraintInfo)
+		(*m)[clusterRef] = s
+
+		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		reconciler := getAddonConstraintReconciler(c)
+
+		addonConstraintName := client.ObjectKey{
+			Name: addonConstraint.Name,
+		}
+		// Reconcile. After reconciliation expect that:
+		// 1. AddonConstraint instance is not marked as match for cluster in manager anymore
+		// 2. cluster has been annotate
+		_, err := reconciler.Reconcile(context.TODO(), ctrl.Request{
+			NamespacedName: addonConstraintName,
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		m = manager.GetMap()
+		v, ok := (*m)[clusterRef]
+		Expect(ok).To(BeTrue())
+		Expect(v.Len()).To(BeZero())
+
+		currentSveltosCluster := &libsveltosv1alpha1.SveltosCluster{}
+		Expect(c.Get(context.TODO(),
+			types.NamespacedName{Namespace: sveltosCluster.Namespace, Name: sveltosCluster.Name}, currentSveltosCluster)).To(Succeed())
+		Expect(currentSveltosCluster.Annotations).ToNot(BeNil())
+		_, ok = currentSveltosCluster.Annotations[libsveltosv1alpha1.GetClusterAnnotation()]
+		Expect(ok).To(BeTrue())
 	})
 })
 

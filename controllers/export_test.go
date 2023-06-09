@@ -16,6 +16,12 @@ limitations under the License.
 
 package controllers
 
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/projectsveltos/libsveltos/lib/set"
+)
+
 var (
 	GetCurrentReferences               = (*AddonConstraintReconciler).getCurrentReferences
 	RequeueAddonConstraintForReference = (*AddonConstraintReconciler).requeueAddonConstraintForReference
@@ -29,6 +35,20 @@ var (
 )
 
 var (
+	ShouldAddClusterEntry = shouldAddClusterEntry
+	AddClusterEntry       = addClusterEntry
+	AnnotateCluster       = annotateCluster
+)
+
+var (
 	AddTypeInformationToObject = addTypeInformationToObject
 	WalkDir                    = walkDir
 )
+
+func (m *manager) GetMap() *map[corev1.ObjectReference]*set.Set {
+	return &m.addonConstraints
+}
+
+func Reset() {
+	managerInstance = nil
+}
