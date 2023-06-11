@@ -531,7 +531,7 @@ var _ = Describe("AddonConstraint Predicates: ConfigMapPredicates", func() {
 	})
 })
 
-var _ = Describe("Clustersummary Predicates: SecretPredicates", func() {
+var _ = Describe("AddonConstraint Predicates: SecretPredicates", func() {
 	var logger logr.Logger
 	var secret *corev1.Secret
 

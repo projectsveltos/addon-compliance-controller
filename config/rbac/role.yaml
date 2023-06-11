@@ -35,6 +35,8 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - cluster.x-k8s.io
@@ -101,6 +103,8 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - lib.projectsveltos.io

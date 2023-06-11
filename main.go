@@ -44,11 +44,12 @@ import (
 
 	//+kubebuilder:scaffold:imports
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
+
+	"github.com/projectsveltos/addon-constraint-controller/controllers"
 )
 
 var (
@@ -116,6 +117,20 @@ func main() {
 	addonConstraintController, err = addonConstraintReconciler.SetupWithManager(mgr)
 	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AddonConstraint")
+		os.Exit(1)
+	}
+	if err = (&controllers.SveltosClusterReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SveltosCluster")
+		os.Exit(1)
+	}
+	if err = (&controllers.ClusterReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

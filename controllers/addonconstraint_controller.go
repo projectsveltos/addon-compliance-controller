@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,6 +51,10 @@ import (
 )
 
 const (
+	// deleteRequeueAfter is how long to wait before checking again to see if the cluster still has
+	// children during deletion.
+	deleteRequeueAfter = 20 * time.Second
+
 	// normalRequeueAfter is how long to wait before checking again to see if the cluster can be moved
 	// to ready after or workload features (for instance ingress or reporter) have failed
 	normalRequeueAfter = 20 * time.Second
@@ -124,18 +129,17 @@ func (r *AddonConstraintReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	logger = logger.WithValues("addonConstraint", req.String())
-
 	addonConstraintScope, err := scope.NewAddonConstraintScope(scope.AddonConstraintScopeParams{
 		Client:          r.Client,
 		Logger:          logger,
 		AddonConstraint: addonConstraint,
-		ControllerName:  "clusterprofile",
+		ControllerName:  "addonconstraint",
 	})
 	if err != nil {
 		logger.Error(err, "Failed to create addonConstraintScope")
 		return reconcile.Result{}, errors.Wrapf(
 			err,
-			"unable to create clusterprofile scope for %s",
+			"unable to create addonconstraint scope for %s",
 			req.NamespacedName,
 		)
 	}
@@ -165,11 +169,16 @@ func (r *AddonConstraintReconciler) reconcileDelete(
 	logger := addonConstraintScope.Logger
 	logger.V(logs.LogInfo).Info("Reconciling AddonConstraint delete")
 
+	r.cleanMaps(addonConstraintScope)
+
+	err := r.annotateClusters(ctx, addonConstraintScope, logger)
+	if err != nil {
+		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
+	}
+
 	if controllerutil.ContainsFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer) {
 		controllerutil.RemoveFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer)
 	}
-
-	r.cleanMaps(addonConstraintScope)
 
 	logger.V(logs.LogInfo).Info("Reconcile delete success")
 	return reconcile.Result{}, nil
@@ -205,6 +214,11 @@ func (r *AddonConstraintReconciler) reconcileNormal(
 		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
 	}
 	addonConstraintScope.AddonConstraint.Status.OpenapiValidations = validations
+
+	err = r.annotateClusters(ctx, addonConstraintScope, logger)
+	if err != nil {
+		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
+	}
 
 	logger.V(logs.LogInfo).Info("Reconcile success")
 	return reconcile.Result{}, nil
@@ -274,7 +288,7 @@ func (r *AddonConstraintReconciler) WatchForCAPI(mgr ctrl.Manager, c controller.
 }
 
 func (r *AddonConstraintReconciler) WatchForFlux(mgr ctrl.Manager, c controller.Controller) error {
-	// When a Flux source (GitRepository/OCIRepository/Bucket) changes, one or more ClusterSummaries
+	// When a Flux source (GitRepository/OCIRepository/Bucket) changes, one or more addonConstraints
 	// need to be reconciled.
 
 	err := c.Watch(&source.Kind{Type: &sourcev1.GitRepository{}},
@@ -431,7 +445,7 @@ func (r *AddonConstraintReconciler) cleanMaps(addonConstraintScope *scope.AddonC
 func (r *AddonConstraintReconciler) addFinalizer(ctx context.Context, addonConstraintScope *scope.AddonConstraintScope) error {
 	// If the SveltosCluster doesn't have our finalizer, add it.
 	controllerutil.AddFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer)
-	// Register the finalizer immediately to avoid orphaning clusterprofile resources on delete
+	// Register the finalizer immediately to avoid orphaning addonconstraint resources on delete
 	if err := addonConstraintScope.PatchObject(ctx); err != nil {
 		addonConstraintScope.Error(err, "Failed to add finalizer")
 		return errors.Wrapf(
@@ -616,4 +630,70 @@ func (r *AddonConstraintReconciler) collectContentFromFluxSource(ctx context.Con
 	}
 
 	return policies, nil
+}
+
+func (r *AddonConstraintReconciler) annotateClusters(ctx context.Context,
+	addonConstraintScope *scope.AddonConstraintScope, logger logr.Logger) error {
+
+	m := GetManager()
+	addonConstraint := getKeyFromObject(r.Scheme, addonConstraintScope.AddonConstraint)
+	// Returns the list of cluster to annotate
+	clustersToAnnotate := m.RemoveAddonConstraint(addonConstraint)
+	for i := range clustersToAnnotate {
+		if err := r.annotateCluster(ctx, clustersToAnnotate[i]); err != nil {
+			logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to annotagte cluster %s:%s/%s",
+				clustersToAnnotate[i].Kind, clustersToAnnotate[i].Namespace, clustersToAnnotate[i].Name))
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Cluster addons are deployed by addon controller.
+// Cluster addon constraints are loaded by addon-constraint controller.
+//
+// When NEW cluster is created it might match both a ClusterProfile and an AddonConstrain:
+// - Matching a ClusterProfile means addons need to be deployed (by addon controller).
+// - Matching an AddonConstraint means some validations are defined and any addon deployed in
+// this cluster should satisfy those validations.
+//
+// Addon controller and addon-constraint controller needs to act in sync so that when a new
+// cluster is discovered:
+// - addon-constraint controller first loads all addonConstraint instances;
+// - only after that, addon controller starts deploying addons in the newly discovered cluster.
+//
+// This is achieved by:
+// - addon-constraint controller adding an annotation on a cluster;
+// - addon controller deploying addons only on clusters with such annotation set.
+//
+// Addon-constraint controller will add this annotation to any cluster it is aware of
+// (if addon-constrain controller is aware of a cluster we can assume validations for such cluster
+// are loaded).
+// Addon controller won't deploy any addons till this annotation is set on a cluster.
+// To know more please refer to loader.go
+
+func (r *AddonConstraintReconciler) annotateCluster(ctx context.Context,
+	ref *corev1.ObjectReference) error {
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		cluster, err := clusterproxy.GetCluster(ctx, r.Client, ref.Namespace, ref.Name, clusterproxy.GetClusterType(ref))
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		annotations := cluster.GetAnnotations()
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+		if _, ok := annotations[libsveltosv1alpha1.GetClusterAnnotation()]; ok {
+			return nil
+		}
+		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = "ok"
+		cluster.SetAnnotations(annotations)
+		return r.Update(ctx, cluster)
+	})
+	return err
 }
