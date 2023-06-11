@@ -103,6 +103,11 @@ func (s *AddonConstraintScope) SetMatchingClusterRefs(matchingClusters []corev1.
 	s.AddonConstraint.Status.MatchingClusterRefs = matchingClusters
 }
 
+// SetFailureMessage sets the failureMessage .
+func (s *AddonConstraintScope) SetFailureMessage(failureMessage *string) {
+	s.AddonConstraint.Status.FailureMessage = failureMessage
+}
+
 // UpdateLabels updates AddonConstraint labels using matching clusters
 func (s *AddonConstraintScope) UpdateLabels(matchingClusters []corev1.ObjectReference) {
 	labels := make(map[string]string)

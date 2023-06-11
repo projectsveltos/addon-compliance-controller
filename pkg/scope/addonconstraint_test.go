@@ -122,6 +122,26 @@ var _ = Describe("AddonConstraintScope", func() {
 		Expect(reflect.DeepEqual(addonConstraint.Status.MatchingClusterRefs, matchingClusters)).To(BeTrue())
 	})
 
+	It("SetFailureMessage sets AddonConstraint.Status.FailureMessage", func() {
+		params := scope.AddonConstraintScopeParams{
+			Client:          c,
+			AddonConstraint: addonConstraint,
+			Logger:          klogr.New(),
+		}
+
+		scope, err := scope.NewAddonConstraintScope(params)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(scope).ToNot(BeNil())
+
+		failureMessage := randomString()
+		scope.SetFailureMessage(&failureMessage)
+		Expect(addonConstraint.Status.FailureMessage).ToNot(BeNil())
+		Expect(reflect.DeepEqual(*addonConstraint.Status.FailureMessage, failureMessage)).To(BeTrue())
+
+		scope.SetFailureMessage(nil)
+		Expect(addonConstraint.Status.FailureMessage).To(BeNil())
+	})
+
 	It("Close updates AddonConstraint", func() {
 		params := scope.AddonConstraintScopeParams{
 			Client:          c,
