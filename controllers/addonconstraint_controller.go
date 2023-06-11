@@ -200,6 +200,8 @@ func (r *AddonConstraintReconciler) reconcileNormal(
 
 	matchingCluster, err := r.getMatchingClusters(ctx, addonConstraintScope, logger)
 	if err != nil {
+		failureMsg := err.Error()
+		addonConstraintScope.SetFailureMessage(&failureMsg)
 		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
 	}
 	addonConstraintScope.SetMatchingClusterRefs(matchingCluster)
@@ -211,15 +213,20 @@ func (r *AddonConstraintReconciler) reconcileNormal(
 	var validations map[string][]byte
 	validations, err = r.collectOpenapiValidations(ctx, addonConstraintScope, logger)
 	if err != nil {
+		failureMsg := err.Error()
+		addonConstraintScope.SetFailureMessage(&failureMsg)
 		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
 	}
 	addonConstraintScope.AddonConstraint.Status.OpenapiValidations = validations
 
 	err = r.annotateClusters(ctx, addonConstraintScope, logger)
 	if err != nil {
+		failureMsg := err.Error()
+		addonConstraintScope.SetFailureMessage(&failureMsg)
 		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
 	}
 
+	addonConstraintScope.SetFailureMessage(nil)
 	logger.V(logs.LogInfo).Info("Reconcile success")
 	return reconcile.Result{}, nil
 }
