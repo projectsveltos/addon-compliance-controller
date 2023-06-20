@@ -353,7 +353,7 @@ spec:
         - --v=5
         command:
         - /manager
-        image: projectsveltos/addon-constraint-controller-amd64:main
+        image: projectsveltos/addon-constraint-controller-amd64:dev
         livenessProbe:
           httpGet:
             path: /healthz
