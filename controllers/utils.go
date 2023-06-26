@@ -28,7 +28,6 @@ import (
 	"github.com/fluxcd/pkg/tar"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -105,8 +104,8 @@ func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) {
 	}
 }
 
-func getOpenapiReferenceAPIVersion(ref *libsveltosv1alpha1.OpenAPIValidationRef) string {
-	switch ref.Kind {
+func getReferenceAPIVersion(kind string) string {
+	switch kind {
 	case string(libsveltosv1alpha1.ConfigMapReferencedResourceKind):
 		return corev1.SchemeGroupVersion.String()
 	case string(libsveltosv1alpha1.SecretReferencedResourceKind):
@@ -176,20 +175,6 @@ func collectContent(ctx context.Context, data map[string]string, logger logr.Log
 			section := removeCommentsAndEmptyLines(elements[i])
 			if section == "" {
 				continue
-			}
-
-			loader := &openapi3.Loader{Context: ctx, IsExternalRefsAllowed: true}
-
-			// Load the OpenAPI specification from the content
-			doc, err := loader.LoadFromData([]byte(section))
-			if err != nil {
-				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to loadFromData: %v", err))
-				return nil, err
-			}
-
-			if err = doc.Validate(ctx); err != nil {
-				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to validate: %v", err))
-				return nil, err
 			}
 
 			policies = append(policies, []byte(section))

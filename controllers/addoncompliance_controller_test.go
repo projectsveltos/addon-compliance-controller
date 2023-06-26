@@ -120,6 +120,37 @@ components:
       type: string
       maxLength: 10
 `
+
+	deploymentReplicaCheck = `
+function evaluate()
+  local hs = {}
+  hs.valid = true
+  hs.message = ""
+
+  local deployments = {}
+  local pattern = "^prod"
+  
+  -- Separate deployments and services from the resources
+  for _, resource in ipairs(resources) do
+    if resource.kind == "Deployment" then
+      table.insert(deployments, resource)
+    end
+  end
+
+  -- Check for each deployment if there is a matching service
+  for _, deployment in ipairs(deployments) do
+    local deploymentInfo = deployment.metadata.namespace .. "/" .. deployment.metadata.name
+    
+    if not string.match(deployment.metadata.name, pattern) then
+      hs.message = "No matching service found for deployment: " .. deploymentInfo
+      hs.valid = false
+      break
+    end
+  end
+
+  return hs
+end
+`
 )
 
 var _ = Describe("AddonCompliance Controller", func() {
@@ -444,6 +475,27 @@ var _ = Describe("AddonCompliance Controller", func() {
 		Expect(err).To(BeNil())
 		Expect(result).ToNot(BeNil())
 		Expect(len(result)).To(Equal(2))
+	})
+
+	It("collectLuaValidations updates AddonCompliance status", func() {
+		configMap := createConfigMapWithPolicy(randomString(), randomString(), []string{deploymentReplicaCheck}...)
+
+		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
+			{Namespace: configMap.Namespace, Name: configMap.Name,
+				Kind: string(libsveltosv1alpha1.ConfigMapReferencedResourceKind)},
+		}
+
+		initObjects := []client.Object{configMap, addonConstraint}
+
+		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
+
+		result, err := controllers.CollectLuaValidations(reconciler, context.TODO(),
+			addonConstraintScope, klogr.New())
+		Expect(err).To(BeNil())
+		Expect(result).ToNot(BeNil())
+		Expect(len(result)).To(Equal(1))
 	})
 
 	It("Reconciliation updates manager.addonConstraints", func() {
