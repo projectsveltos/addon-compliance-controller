@@ -142,7 +142,7 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).To(BeNil())
 
-	Byf("Verifying cluster is annotate since there is no AddonConstraint yet")
+	Byf("Verifying cluster is annotate since there is no AddonCompliance yet")
 	Eventually(func() bool {
 		currentCluster := &clusterv1.Cluster{}
 		Expect(k8sClient.Get(context.TODO(),

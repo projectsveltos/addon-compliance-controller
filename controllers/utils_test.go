@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 )
 
 var _ = Describe("Utilities", func() {

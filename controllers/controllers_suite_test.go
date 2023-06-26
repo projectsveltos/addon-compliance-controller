@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
-	"github.com/projectsveltos/addon-constraint-controller/pkg/scope"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/pkg/scope"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
@@ -41,30 +41,30 @@ var _ = BeforeSuite(func() {
 	Expect(err).To(BeNil())
 })
 
-func getAddonConstraintScope(c client.Client, logger logr.Logger,
-	addonConstraint *libsveltosv1alpha1.AddonConstraint,
-) *scope.AddonConstraintScope {
+func getAddonComplianceScope(c client.Client, logger logr.Logger,
+	addonConstraint *libsveltosv1alpha1.AddonCompliance,
+) *scope.AddonComplianceScope {
 
-	addonConstraintScope, err := scope.NewAddonConstraintScope(scope.AddonConstraintScopeParams{
+	addonConstraintScope, err := scope.NewAddonComplianceScope(scope.AddonComplianceScopeParams{
 		Client:          c,
 		Logger:          logger,
-		AddonConstraint: addonConstraint,
-		ControllerName:  "addonconstraint",
+		AddonCompliance: addonConstraint,
+		ControllerName:  "addoncompliance",
 	})
 	Expect(err).To(BeNil())
 	return addonConstraintScope
 }
 
-func getAddonConstraintReconciler(c client.Client) *controllers.AddonConstraintReconciler {
-	return &controllers.AddonConstraintReconciler{
+func getAddonComplianceReconciler(c client.Client) *controllers.AddonComplianceReconciler {
+	return &controllers.AddonComplianceReconciler{
 		Client:                        c,
 		Scheme:                        scheme,
-		AddonConstraints:              make(map[types.NamespacedName]libsveltosv1alpha1.Selector),
+		AddonCompliances:              make(map[types.NamespacedName]libsveltosv1alpha1.Selector),
 		ClusterLabels:                 make(map[corev1.ObjectReference]map[string]string),
 		ClusterMap:                    make(map[corev1.ObjectReference]*libsveltosset.Set),
-		AddonConstraintToClusterMap:   make(map[types.NamespacedName]*libsveltosset.Set),
+		AddonComplianceToClusterMap:   make(map[types.NamespacedName]*libsveltosset.Set),
 		ReferenceMap:                  make(map[corev1.ObjectReference]*libsveltosset.Set),
-		AddonConstraintToReferenceMap: make(map[types.NamespacedName]*libsveltosset.Set),
+		AddonComplianceToReferenceMap: make(map[types.NamespacedName]*libsveltosset.Set),
 		PolicyMux:                     sync.Mutex{},
 	}
 }

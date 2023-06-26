@@ -30,11 +30,11 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 )
 
-var _ = Describe("AddonConstraint Predicates: SvelotsClusterPredicates", func() {
+var _ = Describe("AddonCompliance Predicates: SvelotsClusterPredicates", func() {
 	var logger logr.Logger
 	var cluster *libsveltosv1alpha1.SveltosCluster
 
@@ -193,7 +193,7 @@ var _ = Describe("AddonConstraint Predicates: SvelotsClusterPredicates", func() 
 	})
 })
 
-var _ = Describe("AddonConstraint Predicates: ClusterPredicates", func() {
+var _ = Describe("AddonCompliance Predicates: ClusterPredicates", func() {
 	var logger logr.Logger
 	var cluster *clusterv1.Cluster
 
@@ -328,7 +328,7 @@ var _ = Describe("AddonConstraint Predicates: ClusterPredicates", func() {
 	})
 })
 
-var _ = Describe("AddonConstraint Predicates: MachinePredicates", func() {
+var _ = Describe("AddonCompliance Predicates: MachinePredicates", func() {
 	var logger logr.Logger
 	var machine *clusterv1.Machine
 
@@ -436,7 +436,7 @@ var _ = Describe("AddonConstraint Predicates: MachinePredicates", func() {
 	})
 })
 
-var _ = Describe("AddonConstraint Predicates: ConfigMapPredicates", func() {
+var _ = Describe("AddonCompliance Predicates: ConfigMapPredicates", func() {
 	var logger logr.Logger
 	var configMap *corev1.ConfigMap
 
@@ -531,7 +531,7 @@ var _ = Describe("AddonConstraint Predicates: ConfigMapPredicates", func() {
 	})
 })
 
-var _ = Describe("AddonConstraint Predicates: SecretPredicates", func() {
+var _ = Describe("AddonCompliance Predicates: SecretPredicates", func() {
 	var logger logr.Logger
 	var secret *corev1.Secret
 
@@ -606,7 +606,7 @@ var _ = Describe("AddonConstraint Predicates: SecretPredicates", func() {
 	})
 })
 
-var _ = Describe("AddonConstraint Predicates: FluxSourcePredicates", func() {
+var _ = Describe("AddonCompliance Predicates: FluxSourcePredicates", func() {
 	var logger logr.Logger
 	var gitRepository *sourcev1.GitRepository
 

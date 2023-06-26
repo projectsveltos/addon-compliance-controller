@@ -20,7 +20,7 @@ SHELL = /usr/bin/env bash -o pipefail
 
 # Define Docker related variables.
 REGISTRY ?= projectsveltos
-IMAGE_NAME ?= addon-constraint-controller
+IMAGE_NAME ?= addon-compliance-controller
 ARCH ?= amd64
 OS ?= $(shell uname -s | tr A-Z a-z)
 K8S_LATEST_VER ?= $(shell curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
@@ -246,15 +246,15 @@ deploy-projectsveltos: $(KUSTOMIZE)
 	@echo 'Install libsveltos CRDs'
 	$(KUBECTL) apply -f https://raw.githubusercontent.com/projectsveltos/libsveltos/$(TAG)/config/crd/bases/lib.projectsveltos.io_debuggingconfigurations.yaml
 	$(KUBECTL) apply -f https://raw.githubusercontent.com/projectsveltos/libsveltos/$(TAG)/config/crd/bases/lib.projectsveltos.io_sveltosclusters.yaml
-	$(KUBECTL) apply -f https://raw.githubusercontent.com/projectsveltos/libsveltos/$(TAG)/config/crd/bases/lib.projectsveltos.io_addonconstraints.yaml
+	$(KUBECTL) apply -f https://raw.githubusercontent.com/projectsveltos/libsveltos/$(TAG)/config/crd/bases/lib.projectsveltos.io_addoncompliances.yaml
 
-	# Install projectsveltos addon-constraint-controller components
-	@echo 'Install projectsveltos  addon-constraint-controller components'
+	# Install projectsveltos addon-compliance-controller components
+	@echo 'Install projectsveltos  addon-compliance-controller components'
 	cd config/manager && ../../$(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(ENVSUBST) | $(KUBECTL) apply -f-
 
-	@echo "Waiting for projectsveltos addon-constraint-manager to be available..."
-	$(KUBECTL) wait --for=condition=Available deployment/addon-constraint-manager -n projectsveltos --timeout=$(TIMEOUT)
+	@echo "Waiting for projectsveltos addon-compliance-manager to be available..."
+	$(KUBECTL) wait --for=condition=Available deployment/addon-compliance-manager -n projectsveltos --timeout=$(TIMEOUT)
 
 .PHONY: kind-test
 kind-test: test create-cluster fv ## Build docker image; start kind cluster; load docker image; install all cluster api components and run fv

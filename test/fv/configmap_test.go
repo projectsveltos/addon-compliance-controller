@@ -139,7 +139,7 @@ components:
               maxLength: 10`
 )
 
-var _ = Describe("AddonConstraint with ConfigMap", Serial, func() {
+var _ = Describe("AddonCompliance with ConfigMap", Serial, func() {
 	const (
 		namePrefix = "cm-"
 	)
@@ -162,8 +162,8 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 	Byf("Creating ConfigMap %s/%s", configMap.Namespace, configMap.Name)
 	Expect(k8sClient.Create(context.TODO(), configMap)).To(Succeed())
 
-	Byf("Creating a AddonConstraint referencing this ConfigMap")
-	addonConstraint := getAddonConstraint(namePrefix, map[string]string{key: value})
+	Byf("Creating a AddonCompliance referencing this ConfigMap")
+	addonConstraint := getAddonCompliance(namePrefix, map[string]string{key: value})
 	addonConstraint.Spec.OpenAPIValidationRefs = []libsveltosv1alpha1.OpenAPIValidationRef{
 		{
 			Namespace: configMap.Namespace,
@@ -173,30 +173,30 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 	}
 	Expect(k8sClient.Create(context.TODO(), addonConstraint)).To(Succeed())
 
-	Byf("Verifying AddonConstraint %s Status", addonConstraint.Name)
+	Byf("Verifying AddonCompliance %s Status", addonConstraint.Name)
 	Eventually(func() bool {
-		currentAddonConstraint := &libsveltosv1alpha1.AddonConstraint{}
+		currentAddonCompliance := &libsveltosv1alpha1.AddonCompliance{}
 		err := k8sClient.Get(context.TODO(),
 			types.NamespacedName{Name: addonConstraint.Name},
-			currentAddonConstraint)
+			currentAddonCompliance)
 		if err != nil {
 			return false
 		}
-		if currentAddonConstraint.Status.OpenapiValidations == nil {
+		if currentAddonCompliance.Status.OpenapiValidations == nil {
 			return false
 		}
 		return true
 	}, timeout, pollingInterval).Should(BeTrue())
 
-	Byf("Verifying AddonConstraint %s Status.OpenapiValidations", addonConstraint.Name)
-	currentAddonConstraint := &libsveltosv1alpha1.AddonConstraint{}
+	Byf("Verifying AddonCompliance %s Status.OpenapiValidations", addonConstraint.Name)
+	currentAddonCompliance := &libsveltosv1alpha1.AddonCompliance{}
 	Expect(k8sClient.Get(context.TODO(),
 		types.NamespacedName{Namespace: addonConstraint.Namespace, Name: addonConstraint.Name},
-		currentAddonConstraint)).To(Succeed())
-	Expect(len(currentAddonConstraint.Status.OpenapiValidations)).To(Equal(expectedResources))
+		currentAddonCompliance)).To(Succeed())
+	Expect(len(currentAddonCompliance.Status.OpenapiValidations)).To(Equal(expectedResources))
 
-	Byf("Verifying AddonConstraint %s Status.MatchingClusterRefs", addonConstraint.Name)
-	Expect(len(currentAddonConstraint.Status.MatchingClusterRefs)).To(Equal(1))
+	Byf("Verifying AddonCompliance %s Status.MatchingClusterRefs", addonConstraint.Name)
+	Expect(len(currentAddonCompliance.Status.MatchingClusterRefs)).To(Equal(1))
 
 	Byf("Updating ConfigMap %s/%s", configMap.Namespace, configMap.Name)
 	newConfigMap := createConfigMapWithPolicy(configMap.Namespace, configMap.Name, []string{appLabel}...)
@@ -206,26 +206,26 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 	currentConfigMap.Data = newConfigMap.Data
 	Expect(k8sClient.Update(context.TODO(), currentConfigMap)).To(Succeed())
 
-	Byf("Verifying AddonConstraint %s Status", addonConstraint.Name)
+	Byf("Verifying AddonCompliance %s Status", addonConstraint.Name)
 	Eventually(func() bool {
-		currentAddonConstraint := &libsveltosv1alpha1.AddonConstraint{}
+		currentAddonCompliance := &libsveltosv1alpha1.AddonCompliance{}
 		err := k8sClient.Get(context.TODO(),
 			types.NamespacedName{Name: addonConstraint.Name},
-			currentAddonConstraint)
+			currentAddonCompliance)
 		if err != nil {
 			return false
 		}
-		if currentAddonConstraint.Status.OpenapiValidations == nil {
+		if currentAddonCompliance.Status.OpenapiValidations == nil {
 			return false
 		}
-		return len(currentAddonConstraint.Status.OpenapiValidations) == 1
+		return len(currentAddonCompliance.Status.OpenapiValidations) == 1
 	}, timeout, pollingInterval).Should(BeTrue())
 
-	Byf("Deleting AddonConstraint %s", addonConstraint.Name)
+	Byf("Deleting AddonCompliance %s", addonConstraint.Name)
 	Expect(k8sClient.Get(context.TODO(),
 		types.NamespacedName{Namespace: addonConstraint.Namespace, Name: addonConstraint.Name},
-		currentAddonConstraint)).To(Succeed())
-	Expect(k8sClient.Delete(context.TODO(), currentAddonConstraint)).To(Succeed())
+		currentAddonCompliance)).To(Succeed())
+	Expect(k8sClient.Delete(context.TODO(), currentAddonCompliance)).To(Succeed())
 
 	Byf("Deleting Namespace %s", ns.Name)
 	currentNs := &corev1.Namespace{}

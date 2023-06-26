@@ -43,7 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/projectsveltos/addon-constraint-controller/pkg/scope"
+	"github.com/projectsveltos/addon-compliance-controller/pkg/scope"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
@@ -60,8 +60,8 @@ const (
 	normalRequeueAfter = 20 * time.Second
 )
 
-// AddonConstraintReconciler reconciles a AddonConstraint object
-type AddonConstraintReconciler struct {
+// AddonComplianceReconciler reconciles a AddonCompliance object
+type AddonComplianceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -72,29 +72,29 @@ type AddonConstraintReconciler struct {
 
 	// For each cluster contains current labels
 	// This is needed in following scenario:
-	// - AddonConstraint is created
-	// - Cluster is created with labels matching AddonConstraint
+	// - AddonCompliance is created
+	// - Cluster is created with labels matching AddonCompliance
 	// - When first control plane machine in such cluster becomes available
-	// we need Cluster labels to know which AddonConstraint to reconcile
+	// we need Cluster labels to know which AddonCompliance to reconcile
 	ClusterLabels map[corev1.ObjectReference]map[string]string
 
-	// key: AddonConstraint; value AddonConstraint Selector
-	AddonConstraints map[types.NamespacedName]libsveltosv1alpha1.Selector
+	// key: AddonCompliance; value AddonCompliance Selector
+	AddonCompliances map[types.NamespacedName]libsveltosv1alpha1.Selector
 
-	// key: Sveltos/CAPI Cluster; value: set of all AddonConstraints matching the Cluster
+	// key: Sveltos/CAPI Cluster; value: set of all AddonCompliances matching the Cluster
 	ClusterMap map[corev1.ObjectReference]*libsveltosset.Set
-	// key: AddonConstraint; value: set of Sveltos/CAPI Clusters matched
-	AddonConstraintToClusterMap map[types.NamespacedName]*libsveltosset.Set
+	// key: AddonCompliance; value: set of Sveltos/CAPI Clusters matched
+	AddonComplianceToClusterMap map[types.NamespacedName]*libsveltosset.Set
 
-	// key: Referenced object; value: set of all AddonConstraints referencing the resource
+	// key: Referenced object; value: set of all AddonCompliances referencing the resource
 	ReferenceMap map[corev1.ObjectReference]*libsveltosset.Set
-	// key: AddonConstraint name; value: set of referenced resources
-	AddonConstraintToReferenceMap map[types.NamespacedName]*libsveltosset.Set
+	// key: AddonCompliance name; value: set of referenced resources
+	AddonComplianceToReferenceMap map[types.NamespacedName]*libsveltosset.Set
 }
 
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=addonconstraints,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=addonconstraints/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=addonconstraints/finalizers,verbs=update
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=addoncompliances,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=addoncompliances/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=addoncompliances/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 //+kubebuilder:rbac:groups="source.toolkit.fluxcd.io",resources=gitrepositories,verbs=get;watch;list
@@ -110,41 +110,41 @@ type AddonConstraintReconciler struct {
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=sveltosclusters,verbs=get;watch;list
 //+kubebuilder:rbac:groups=lib.projectsveltos.io,resources=sveltosclusters/status,verbs=get;watch;list
 
-func (r *AddonConstraintReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
+func (r *AddonComplianceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
 	logger := ctrl.LoggerFrom(ctx)
 	logger.V(logs.LogInfo).Info("Reconciling")
 
-	// Fecth the AddonConstraint instance
-	addonConstraint := &libsveltosv1alpha1.AddonConstraint{}
+	// Fecth the AddonCompliance instance
+	addonConstraint := &libsveltosv1alpha1.AddonCompliance{}
 	if err := r.Get(ctx, req.NamespacedName, addonConstraint); err != nil {
 		if apierrors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
-		logger.Error(err, "Failed to fetch AddonConstraint")
+		logger.Error(err, "Failed to fetch AddonCompliance")
 		return reconcile.Result{}, errors.Wrapf(
 			err,
-			"Failed to fetch AddonConstraint %s",
+			"Failed to fetch AddonCompliance %s",
 			req.NamespacedName,
 		)
 	}
 
 	logger = logger.WithValues("addonConstraint", req.String())
-	addonConstraintScope, err := scope.NewAddonConstraintScope(scope.AddonConstraintScopeParams{
+	addonConstraintScope, err := scope.NewAddonComplianceScope(scope.AddonComplianceScopeParams{
 		Client:          r.Client,
 		Logger:          logger,
-		AddonConstraint: addonConstraint,
-		ControllerName:  "addonconstraint",
+		AddonCompliance: addonConstraint,
+		ControllerName:  "addoncompliance",
 	})
 	if err != nil {
 		logger.Error(err, "Failed to create addonConstraintScope")
 		return reconcile.Result{}, errors.Wrapf(
 			err,
-			"unable to create addonconstraint scope for %s",
+			"unable to create addoncompliance scope for %s",
 			req.NamespacedName,
 		)
 	}
 
-	// Always close the scope when exiting this function so we can persist any AddonConstraint
+	// Always close the scope when exiting this function so we can persist any AddonCompliance
 	// changes.
 	defer func() {
 		if err := addonConstraintScope.Close(ctx); err != nil {
@@ -161,13 +161,13 @@ func (r *AddonConstraintReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	return r.reconcileNormal(ctx, addonConstraintScope)
 }
 
-func (r *AddonConstraintReconciler) reconcileDelete(
+func (r *AddonComplianceReconciler) reconcileDelete(
 	ctx context.Context,
-	addonConstraintScope *scope.AddonConstraintScope,
+	addonConstraintScope *scope.AddonComplianceScope,
 ) (reconcile.Result, error) {
 
 	logger := addonConstraintScope.Logger
-	logger.V(logs.LogInfo).Info("Reconciling AddonConstraint delete")
+	logger.V(logs.LogInfo).Info("Reconciling AddonCompliance delete")
 
 	r.cleanMaps(addonConstraintScope)
 
@@ -176,23 +176,23 @@ func (r *AddonConstraintReconciler) reconcileDelete(
 		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
 	}
 
-	if controllerutil.ContainsFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer) {
-		controllerutil.RemoveFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer)
+	if controllerutil.ContainsFinalizer(addonConstraintScope.AddonCompliance, libsveltosv1alpha1.AddonComplianceFinalizer) {
+		controllerutil.RemoveFinalizer(addonConstraintScope.AddonCompliance, libsveltosv1alpha1.AddonComplianceFinalizer)
 	}
 
 	logger.V(logs.LogInfo).Info("Reconcile delete success")
 	return reconcile.Result{}, nil
 }
 
-func (r *AddonConstraintReconciler) reconcileNormal(
+func (r *AddonComplianceReconciler) reconcileNormal(
 	ctx context.Context,
-	addonConstraintScope *scope.AddonConstraintScope,
+	addonConstraintScope *scope.AddonComplianceScope,
 ) (reconcile.Result, error) {
 
 	logger := addonConstraintScope.Logger
-	logger.V(logs.LogInfo).Info("Reconciling AddonConstraint")
+	logger.V(logs.LogInfo).Info("Reconciling AddonCompliance")
 
-	if !controllerutil.ContainsFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer) {
+	if !controllerutil.ContainsFinalizer(addonConstraintScope.AddonCompliance, libsveltosv1alpha1.AddonComplianceFinalizer) {
 		if err := r.addFinalizer(ctx, addonConstraintScope); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -217,7 +217,7 @@ func (r *AddonConstraintReconciler) reconcileNormal(
 		addonConstraintScope.SetFailureMessage(&failureMsg)
 		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
 	}
-	addonConstraintScope.AddonConstraint.Status.OpenapiValidations = validations
+	addonConstraintScope.AddonCompliance.Status.OpenapiValidations = validations
 
 	err = r.annotateClusters(ctx, addonConstraintScope, logger)
 	if err != nil {
@@ -232,9 +232,9 @@ func (r *AddonConstraintReconciler) reconcileNormal(
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *AddonConstraintReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Controller, error) {
+func (r *AddonComplianceReconciler) SetupWithManager(mgr ctrl.Manager) (controller.Controller, error) {
 	c, err := ctrl.NewControllerManagedBy(mgr).
-		For(&libsveltosv1alpha1.AddonConstraint{}).
+		For(&libsveltosv1alpha1.AddonCompliance{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: r.ConcurrentReconciles,
 		}).
@@ -244,9 +244,9 @@ func (r *AddonConstraintReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 	}
 
 	// When ConfigMap changes, according to ConfigMapPredicates,
-	// one or more AddonConstraints need to be reconciled.
+	// one or more AddonCompliances need to be reconciled.
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForReference),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForReference),
 		ConfigMapPredicates(mgr.GetLogger().WithValues("predicate", "configmappredicate")),
 	)
 	if err != nil {
@@ -254,9 +254,9 @@ func (r *AddonConstraintReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 	}
 
 	// When Secret changes, according to SecretPredicates,
-	// one or more AddonConstraints need to be reconciled.
+	// one or more AddonCompliances need to be reconciled.
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForReference),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForReference),
 		SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
 	)
 	if err != nil {
@@ -264,28 +264,28 @@ func (r *AddonConstraintReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 	}
 
 	// When projectsveltos cluster changes, according to SveltosClusterPredicates,
-	// one or more AddonConstraints need to be reconciled.
+	// one or more AddonCompliances need to be reconciled.
 	err = c.Watch(&source.Kind{Type: &libsveltosv1alpha1.SveltosCluster{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForCluster),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForCluster),
 		SveltosClusterPredicates(mgr.GetLogger().WithValues("predicate", "sveltosclusterpredicate")),
 	)
 
 	return c, err
 }
 
-func (r *AddonConstraintReconciler) WatchForCAPI(mgr ctrl.Manager, c controller.Controller) error {
+func (r *AddonComplianceReconciler) WatchForCAPI(mgr ctrl.Manager, c controller.Controller) error {
 	// When cluster-api cluster changes, according to ClusterPredicates,
-	// one or more AddonConstraints need to be reconciled.
+	// one or more AddonCompliances need to be reconciled.
 	if err := c.Watch(&source.Kind{Type: &clusterv1.Cluster{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForCluster),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForCluster),
 		ClusterPredicates(mgr.GetLogger().WithValues("predicate", "clusterpredicate")),
 	); err != nil {
 		return err
 	}
 	// When cluster-api machine changes, according to ClusterPredicates,
-	// one or more AddonConstraints need to be reconciled.
+	// one or more AddonCompliances need to be reconciled.
 	if err := c.Watch(&source.Kind{Type: &clusterv1.Machine{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForMachine),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForMachine),
 		MachinePredicates(mgr.GetLogger().WithValues("predicate", "machinepredicate")),
 	); err != nil {
 		return err
@@ -294,12 +294,12 @@ func (r *AddonConstraintReconciler) WatchForCAPI(mgr ctrl.Manager, c controller.
 	return nil
 }
 
-func (r *AddonConstraintReconciler) WatchForFlux(mgr ctrl.Manager, c controller.Controller) error {
+func (r *AddonComplianceReconciler) WatchForFlux(mgr ctrl.Manager, c controller.Controller) error {
 	// When a Flux source (GitRepository/OCIRepository/Bucket) changes, one or more addonConstraints
 	// need to be reconciled.
 
 	err := c.Watch(&source.Kind{Type: &sourcev1.GitRepository{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForFluxSources),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForFluxSources),
 		FluxSourcePredicates(r.Scheme, mgr.GetLogger().WithValues("predicate", "fluxsourcepredicate")),
 	)
 	if err != nil {
@@ -307,7 +307,7 @@ func (r *AddonConstraintReconciler) WatchForFlux(mgr ctrl.Manager, c controller.
 	}
 
 	err = c.Watch(&source.Kind{Type: &sourcev1b2.OCIRepository{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForFluxSources),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForFluxSources),
 		FluxSourcePredicates(r.Scheme, mgr.GetLogger().WithValues("predicate", "fluxsourcepredicate")),
 	)
 	if err != nil {
@@ -315,12 +315,12 @@ func (r *AddonConstraintReconciler) WatchForFlux(mgr ctrl.Manager, c controller.
 	}
 
 	return c.Watch(&source.Kind{Type: &sourcev1b2.Bucket{}},
-		handler.EnqueueRequestsFromMapFunc(r.requeueAddonConstraintForFluxSources),
+		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForFluxSources),
 		FluxSourcePredicates(r.Scheme, mgr.GetLogger().WithValues("predicate", "fluxsourcepredicate")),
 	)
 }
 
-func (r *AddonConstraintReconciler) getReferenceMapForEntry(entry *corev1.ObjectReference) *libsveltosset.Set {
+func (r *AddonComplianceReconciler) getReferenceMapForEntry(entry *corev1.ObjectReference) *libsveltosset.Set {
 	s := r.ReferenceMap[*entry]
 	if s == nil {
 		s = &libsveltosset.Set{}
@@ -329,7 +329,7 @@ func (r *AddonConstraintReconciler) getReferenceMapForEntry(entry *corev1.Object
 	return s
 }
 
-func (r *AddonConstraintReconciler) getClusterMapForEntry(entry *corev1.ObjectReference) *libsveltosset.Set {
+func (r *AddonComplianceReconciler) getClusterMapForEntry(entry *corev1.ObjectReference) *libsveltosset.Set {
 	s := r.ClusterMap[*entry]
 	if s == nil {
 		s = &libsveltosset.Set{}
@@ -338,7 +338,7 @@ func (r *AddonConstraintReconciler) getClusterMapForEntry(entry *corev1.ObjectRe
 	return s
 }
 
-func (r *AddonConstraintReconciler) updateMaps(addonConstraintScope *scope.AddonConstraintScope, logger logr.Logger) {
+func (r *AddonComplianceReconciler) updateMaps(addonConstraintScope *scope.AddonComplianceScope, logger logr.Logger) {
 	logger.V(logs.LogDebug).Info("update policy map")
 
 	r.updateReferenceMap(addonConstraintScope, logger)
@@ -346,10 +346,10 @@ func (r *AddonConstraintReconciler) updateMaps(addonConstraintScope *scope.Addon
 	r.updateClusterMap(addonConstraintScope, logger)
 
 	addonConstraintName := types.NamespacedName{Name: addonConstraintScope.Name()}
-	r.AddonConstraints[addonConstraintName] = addonConstraintScope.AddonConstraint.Spec.ClusterSelector
+	r.AddonCompliances[addonConstraintName] = addonConstraintScope.AddonCompliance.Spec.ClusterSelector
 }
 
-func (r *AddonConstraintReconciler) updateReferenceMap(addonConstraintScope *scope.AddonConstraintScope,
+func (r *AddonComplianceReconciler) updateReferenceMap(addonConstraintScope *scope.AddonComplianceScope,
 	logger logr.Logger) {
 
 	logger.V(logs.LogDebug).Info("update reference map")
@@ -358,38 +358,38 @@ func (r *AddonConstraintReconciler) updateReferenceMap(addonConstraintScope *sco
 	r.PolicyMux.Lock()
 	defer r.PolicyMux.Unlock()
 
-	addonConstraintInfo := getKeyFromObject(r.Scheme, addonConstraintScope.AddonConstraint)
+	addonConstraintInfo := getKeyFromObject(r.Scheme, addonConstraintScope.AddonCompliance)
 	addonConstraintName := types.NamespacedName{Name: addonConstraintScope.Name()}
 
-	// Get list of References not referenced anymore by AddonConstraint
+	// Get list of References not referenced anymore by AddonCompliance
 	var toBeRemoved []corev1.ObjectReference
 
-	if v, ok := r.AddonConstraintToReferenceMap[addonConstraintName]; ok {
+	if v, ok := r.AddonComplianceToReferenceMap[addonConstraintName]; ok {
 		toBeRemoved = v.Difference(currentReferences)
 	}
 
-	// For each currently referenced instance, add AddonConstraint as consumer
+	// For each currently referenced instance, add AddonCompliance as consumer
 	for _, referencedResource := range currentReferences.Items() {
 		tmpResource := referencedResource
 		r.getReferenceMapForEntry(&tmpResource).Insert(addonConstraintInfo)
 	}
 
-	// For each resource not reference anymore, remove AddonConstraint as consumer
+	// For each resource not reference anymore, remove AddonCompliance as consumer
 	for i := range toBeRemoved {
 		referencedResource := toBeRemoved[i]
 		r.getReferenceMapForEntry(&referencedResource).Erase(addonConstraintInfo)
 	}
 
-	// Update list of resources currently referenced by AddonConstraint
-	r.AddonConstraintToReferenceMap[addonConstraintName] = currentReferences
+	// Update list of resources currently referenced by AddonCompliance
+	r.AddonComplianceToReferenceMap[addonConstraintName] = currentReferences
 }
 
-func (r *AddonConstraintReconciler) updateClusterMap(addonConstraintScope *scope.AddonConstraintScope, logger logr.Logger) {
+func (r *AddonComplianceReconciler) updateClusterMap(addonConstraintScope *scope.AddonComplianceScope, logger logr.Logger) {
 	logger.V(logs.LogDebug).Info("update cluster map")
 
 	currentClusters := &libsveltosset.Set{}
-	for i := range addonConstraintScope.AddonConstraint.Status.MatchingClusterRefs {
-		cluster := addonConstraintScope.AddonConstraint.Status.MatchingClusterRefs[i]
+	for i := range addonConstraintScope.AddonCompliance.Status.MatchingClusterRefs {
+		cluster := addonConstraintScope.AddonCompliance.Status.MatchingClusterRefs[i]
 		clusterInfo := &corev1.ObjectReference{Namespace: cluster.Namespace, Name: cluster.Name, Kind: cluster.Kind, APIVersion: cluster.APIVersion}
 		currentClusters.Insert(clusterInfo)
 	}
@@ -397,40 +397,40 @@ func (r *AddonConstraintReconciler) updateClusterMap(addonConstraintScope *scope
 	r.PolicyMux.Lock()
 	defer r.PolicyMux.Unlock()
 
-	addonConstraintInfo := getKeyFromObject(r.Scheme, addonConstraintScope.AddonConstraint)
+	addonConstraintInfo := getKeyFromObject(r.Scheme, addonConstraintScope.AddonCompliance)
 	addonConstraintName := types.NamespacedName{Name: addonConstraintScope.Name()}
 
-	// Get list of Clusters not matched anymore by AddonConstraint
+	// Get list of Clusters not matched anymore by AddonCompliance
 	var toBeRemoved []corev1.ObjectReference
-	if v, ok := r.AddonConstraintToClusterMap[addonConstraintName]; ok {
+	if v, ok := r.AddonComplianceToClusterMap[addonConstraintName]; ok {
 		toBeRemoved = v.Difference(currentClusters)
 	}
 
-	// For each currently matching Cluster, add AddonConstraint as consumer
-	for i := range addonConstraintScope.AddonConstraint.Status.MatchingClusterRefs {
-		cluster := addonConstraintScope.AddonConstraint.Status.MatchingClusterRefs[i]
+	// For each currently matching Cluster, add AddonCompliance as consumer
+	for i := range addonConstraintScope.AddonCompliance.Status.MatchingClusterRefs {
+		cluster := addonConstraintScope.AddonCompliance.Status.MatchingClusterRefs[i]
 		clusterInfo := &corev1.ObjectReference{Namespace: cluster.Namespace, Name: cluster.Name, Kind: cluster.Kind, APIVersion: cluster.APIVersion}
 		r.getClusterMapForEntry(clusterInfo).Insert(addonConstraintInfo)
 	}
 
-	// For each Cluster not matched anymore, remove AddonConstraint as consumer
+	// For each Cluster not matched anymore, remove AddonCompliance as consumer
 	for i := range toBeRemoved {
 		clusterName := toBeRemoved[i]
 		r.getClusterMapForEntry(&clusterName).Erase(addonConstraintInfo)
 	}
 
-	r.AddonConstraintToClusterMap[addonConstraintName] = currentClusters
+	r.AddonComplianceToClusterMap[addonConstraintName] = currentClusters
 }
 
-func (r *AddonConstraintReconciler) cleanMaps(addonConstraintScope *scope.AddonConstraintScope) {
+func (r *AddonComplianceReconciler) cleanMaps(addonConstraintScope *scope.AddonComplianceScope) {
 	r.PolicyMux.Lock()
 	defer r.PolicyMux.Unlock()
 
 	addonConstraintName := types.NamespacedName{Name: addonConstraintScope.Name()}
-	delete(r.AddonConstraintToClusterMap, addonConstraintName)
-	delete(r.AddonConstraintToReferenceMap, addonConstraintName)
+	delete(r.AddonComplianceToClusterMap, addonConstraintName)
+	delete(r.AddonComplianceToReferenceMap, addonConstraintName)
 
-	addonConstraintInfo := getKeyFromObject(r.Scheme, addonConstraintScope.AddonConstraint)
+	addonConstraintInfo := getKeyFromObject(r.Scheme, addonConstraintScope.AddonCompliance)
 
 	for objRef := range r.ReferenceMap {
 		addonConstraintSet := r.ReferenceMap[objRef]
@@ -449,10 +449,10 @@ func (r *AddonConstraintReconciler) cleanMaps(addonConstraintScope *scope.AddonC
 	}
 }
 
-func (r *AddonConstraintReconciler) addFinalizer(ctx context.Context, addonConstraintScope *scope.AddonConstraintScope) error {
+func (r *AddonComplianceReconciler) addFinalizer(ctx context.Context, addonConstraintScope *scope.AddonComplianceScope) error {
 	// If the SveltosCluster doesn't have our finalizer, add it.
-	controllerutil.AddFinalizer(addonConstraintScope.AddonConstraint, libsveltosv1alpha1.AddonConstraintFinalizer)
-	// Register the finalizer immediately to avoid orphaning addonconstraint resources on delete
+	controllerutil.AddFinalizer(addonConstraintScope.AddonCompliance, libsveltosv1alpha1.AddonComplianceFinalizer)
+	// Register the finalizer immediately to avoid orphaning addoncompliance resources on delete
 	if err := addonConstraintScope.PatchObject(ctx); err != nil {
 		addonConstraintScope.Error(err, "Failed to add finalizer")
 		return errors.Wrapf(
@@ -464,8 +464,8 @@ func (r *AddonConstraintReconciler) addFinalizer(ctx context.Context, addonConst
 	return nil
 }
 
-func (r *AddonConstraintReconciler) getMatchingClusters(ctx context.Context,
-	addonConstraintScope *scope.AddonConstraintScope, logger logr.Logger) ([]corev1.ObjectReference, error) {
+func (r *AddonComplianceReconciler) getMatchingClusters(ctx context.Context,
+	addonConstraintScope *scope.AddonComplianceScope, logger logr.Logger) ([]corev1.ObjectReference, error) {
 
 	logger.V(logs.LogDebug).Info("finding matching clusters")
 	var matchingCluster []corev1.ObjectReference
@@ -478,22 +478,22 @@ func (r *AddonConstraintReconciler) getMatchingClusters(ctx context.Context,
 		}
 	}
 
-	matchingCluster = append(matchingCluster, addonConstraintScope.AddonConstraint.Spec.ClusterRefs...)
+	matchingCluster = append(matchingCluster, addonConstraintScope.AddonCompliance.Spec.ClusterRefs...)
 
 	return matchingCluster, nil
 }
 
-func (r *AddonConstraintReconciler) getCurrentReferences(addonConstraintScope *scope.AddonConstraintScope) *libsveltosset.Set {
+func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *scope.AddonComplianceScope) *libsveltosset.Set {
 	currentReferences := &libsveltosset.Set{}
 
-	for i := range addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs {
-		referencedNamespace := addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i].Namespace
-		referencedName := addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i].Name
+	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
+		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Namespace
+		referencedName := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Name
 
-		apiVersion := getOpenapiReferenceAPIVersion(&addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i])
+		apiVersion := getOpenapiReferenceAPIVersion(&addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i])
 		currentReferences.Insert(&corev1.ObjectReference{
 			APIVersion: apiVersion,
-			Kind:       addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i].Kind,
+			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
 			Namespace:  referencedNamespace,
 			Name:       referencedName,
 		})
@@ -501,22 +501,22 @@ func (r *AddonConstraintReconciler) getCurrentReferences(addonConstraintScope *s
 	return currentReferences
 }
 
-func (r *AddonConstraintReconciler) collectOpenapiValidations(ctx context.Context, addonConstraintScope *scope.AddonConstraintScope,
+func (r *AddonComplianceReconciler) collectOpenapiValidations(ctx context.Context, addonConstraintScope *scope.AddonComplianceScope,
 	logger logr.Logger) (map[string][]byte, error) {
 
 	logger.V(logs.LogDebug).Info("collect openapi validations")
 	validations := make(map[string][]byte)
-	for i := range addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs {
-		ref := &addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i]
+	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
+		ref := &addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i]
 		referencedNamespace := ref.Namespace
 		referencedName := ref.Name
-		apiVersion := getOpenapiReferenceAPIVersion(&addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i])
+		apiVersion := getOpenapiReferenceAPIVersion(&addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i])
 
 		var err error
 
 		objRef := &corev1.ObjectReference{
 			APIVersion: apiVersion,
-			Kind:       addonConstraintScope.AddonConstraint.Spec.OpenAPIValidationRefs[i].Kind,
+			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
 			Namespace:  referencedNamespace,
 			Name:       referencedName,
 		}
@@ -548,7 +548,7 @@ func (r *AddonConstraintReconciler) collectOpenapiValidations(ctx context.Contex
 	return validations, nil
 }
 
-func (r *AddonConstraintReconciler) collectContentOfConfigMap(ctx context.Context, ref *corev1.ObjectReference,
+func (r *AddonComplianceReconciler) collectContentOfConfigMap(ctx context.Context, ref *corev1.ObjectReference,
 	logger logr.Logger) ([][]byte, error) {
 
 	logger = logger.WithValues("resource", fmt.Sprintf("%s:%s/%s", ref.Kind, ref.Namespace, ref.Name))
@@ -570,7 +570,7 @@ func (r *AddonConstraintReconciler) collectContentOfConfigMap(ctx context.Contex
 	return policies, nil
 }
 
-func (r *AddonConstraintReconciler) collectContentOfSecret(ctx context.Context, ref *corev1.ObjectReference,
+func (r *AddonComplianceReconciler) collectContentOfSecret(ctx context.Context, ref *corev1.ObjectReference,
 	logger logr.Logger) ([][]byte, error) {
 
 	logger = logger.WithValues("resource", fmt.Sprintf("%s:%s/%s", ref.Kind, ref.Namespace, ref.Name))
@@ -597,7 +597,7 @@ func (r *AddonConstraintReconciler) collectContentOfSecret(ctx context.Context, 
 	return policies, nil
 }
 
-func (r *AddonConstraintReconciler) collectContentFromFluxSource(ctx context.Context, ref *corev1.ObjectReference,
+func (r *AddonComplianceReconciler) collectContentFromFluxSource(ctx context.Context, ref *corev1.ObjectReference,
 	path string, logger logr.Logger) ([][]byte, error) {
 
 	tmpDir, err := prepareFileSystemWithFluxSource(ctx, r.Client, ref, logger)
@@ -639,13 +639,13 @@ func (r *AddonConstraintReconciler) collectContentFromFluxSource(ctx context.Con
 	return policies, nil
 }
 
-func (r *AddonConstraintReconciler) annotateClusters(ctx context.Context,
-	addonConstraintScope *scope.AddonConstraintScope, logger logr.Logger) error {
+func (r *AddonComplianceReconciler) annotateClusters(ctx context.Context,
+	addonConstraintScope *scope.AddonComplianceScope, logger logr.Logger) error {
 
 	m := GetManager()
-	addonConstraint := getKeyFromObject(r.Scheme, addonConstraintScope.AddonConstraint)
+	addonConstraint := getKeyFromObject(r.Scheme, addonConstraintScope.AddonCompliance)
 	// Returns the list of cluster to annotate
-	clustersToAnnotate := m.RemoveAddonConstraint(addonConstraint)
+	clustersToAnnotate := m.RemoveAddonCompliance(addonConstraint)
 	for i := range clustersToAnnotate {
 		if err := r.annotateCluster(ctx, clustersToAnnotate[i]); err != nil {
 			logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to annotagte cluster %s:%s/%s",
@@ -658,29 +658,29 @@ func (r *AddonConstraintReconciler) annotateClusters(ctx context.Context,
 }
 
 // Cluster addons are deployed by addon controller.
-// Cluster addon constraints are loaded by addon-constraint controller.
+// Cluster addon compliances are loaded by addon-compliance controller.
 //
 // When NEW cluster is created it might match both a ClusterProfile and an AddonConstrain:
 // - Matching a ClusterProfile means addons need to be deployed (by addon controller).
-// - Matching an AddonConstraint means some validations are defined and any addon deployed in
+// - Matching an AddonCompliance means some validations are defined and any addon deployed in
 // this cluster should satisfy those validations.
 //
-// Addon controller and addon-constraint controller needs to act in sync so that when a new
+// Addon controller and addon-compliance controller needs to act in sync so that when a new
 // cluster is discovered:
-// - addon-constraint controller first loads all addonConstraint instances;
+// - addon-compliance controller first loads all addonConstraint instances;
 // - only after that, addon controller starts deploying addons in the newly discovered cluster.
 //
 // This is achieved by:
-// - addon-constraint controller adding an annotation on a cluster;
+// - addon-compliance controller adding an annotation on a cluster;
 // - addon controller deploying addons only on clusters with such annotation set.
 //
-// Addon-constraint controller will add this annotation to any cluster it is aware of
+// Addon-compliance controller will add this annotation to any cluster it is aware of
 // (if addon-constrain controller is aware of a cluster we can assume validations for such cluster
 // are loaded).
 // Addon controller won't deploy any addons till this annotation is set on a cluster.
 // To know more please refer to loader.go
 
-func (r *AddonConstraintReconciler) annotateCluster(ctx context.Context,
+func (r *AddonComplianceReconciler) annotateCluster(ctx context.Context,
 	ref *corev1.ObjectReference) error {
 
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {

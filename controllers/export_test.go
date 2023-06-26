@@ -23,15 +23,15 @@ import (
 )
 
 var (
-	GetCurrentReferences               = (*AddonConstraintReconciler).getCurrentReferences
-	RequeueAddonConstraintForReference = (*AddonConstraintReconciler).requeueAddonConstraintForReference
-	GetMatchingClusters                = (*AddonConstraintReconciler).getMatchingClusters
-	UpdateReferenceMap                 = (*AddonConstraintReconciler).updateReferenceMap
-	UpdateClusterMap                   = (*AddonConstraintReconciler).updateClusterMap
-	CleanMaps                          = (*AddonConstraintReconciler).cleanMaps
-	CollectContentOfConfigMap          = (*AddonConstraintReconciler).collectContentOfConfigMap
-	CollectContentOfSecret             = (*AddonConstraintReconciler).collectContentOfSecret
-	CollectOpenapiValidations          = (*AddonConstraintReconciler).collectOpenapiValidations
+	GetCurrentReferences               = (*AddonComplianceReconciler).getCurrentReferences
+	RequeueAddonComplianceForReference = (*AddonComplianceReconciler).requeueAddonComplianceForReference
+	GetMatchingClusters                = (*AddonComplianceReconciler).getMatchingClusters
+	UpdateReferenceMap                 = (*AddonComplianceReconciler).updateReferenceMap
+	UpdateClusterMap                   = (*AddonComplianceReconciler).updateClusterMap
+	CleanMaps                          = (*AddonComplianceReconciler).cleanMaps
+	CollectContentOfConfigMap          = (*AddonComplianceReconciler).collectContentOfConfigMap
+	CollectContentOfSecret             = (*AddonComplianceReconciler).collectContentOfSecret
+	CollectOpenapiValidations          = (*AddonComplianceReconciler).collectOpenapiValidations
 )
 
 var (

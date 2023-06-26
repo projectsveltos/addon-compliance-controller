@@ -65,7 +65,7 @@ rules:
 - apiGroups:
   - lib.projectsveltos.io
   resources:
-  - addonconstraints
+  - addoncompliances
   verbs:
   - create
   - delete
@@ -77,13 +77,13 @@ rules:
 - apiGroups:
   - lib.projectsveltos.io
   resources:
-  - addonconstraints/finalizers
+  - addoncompliances/finalizers
   verbs:
   - update
 - apiGroups:
   - lib.projectsveltos.io
   resources:
-  - addonconstraints/status
+  - addoncompliances/status
   verbs:
   - get
   - patch
