@@ -29,87 +29,87 @@ import (
 	"github.com/projectsveltos/libsveltos/lib/clusterproxy"
 )
 
-// AddonConstraintScopeParams defines the input parameters used to create a new AddonConstraint Scope.
-type AddonConstraintScopeParams struct {
+// AddonComplianceScopeParams defines the input parameters used to create a new AddonCompliance Scope.
+type AddonComplianceScopeParams struct {
 	Client          client.Client
 	Logger          logr.Logger
-	AddonConstraint *libsveltosv1alpha1.AddonConstraint
+	AddonCompliance *libsveltosv1alpha1.AddonCompliance
 	ControllerName  string
 }
 
-// NewAddonConstraintScope creates a new AddonConstraint Scope from the supplied parameters.
+// NewAddonComplianceScope creates a new AddonCompliance Scope from the supplied parameters.
 // This is meant to be called for each reconcile iteration.
-func NewAddonConstraintScope(params AddonConstraintScopeParams) (*AddonConstraintScope, error) {
+func NewAddonComplianceScope(params AddonComplianceScopeParams) (*AddonComplianceScope, error) {
 	if params.Client == nil {
-		return nil, errors.New("client is required when creating a AddonConstraintScope")
+		return nil, errors.New("client is required when creating a AddonComplianceScope")
 	}
-	if params.AddonConstraint == nil {
-		return nil, errors.New("failed to generate new scope from nil AddonConstraint")
+	if params.AddonCompliance == nil {
+		return nil, errors.New("failed to generate new scope from nil AddonCompliance")
 	}
 
-	helper, err := patch.NewHelper(params.AddonConstraint, params.Client)
+	helper, err := patch.NewHelper(params.AddonCompliance, params.Client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init patch helper")
 	}
-	return &AddonConstraintScope{
+	return &AddonComplianceScope{
 		Logger:          params.Logger,
 		client:          params.Client,
-		AddonConstraint: params.AddonConstraint,
+		AddonCompliance: params.AddonCompliance,
 		patchHelper:     helper,
 		controllerName:  params.ControllerName,
 	}, nil
 }
 
-// AddonConstraintScope defines the basic context for an actuator to operate upon.
-type AddonConstraintScope struct {
+// AddonComplianceScope defines the basic context for an actuator to operate upon.
+type AddonComplianceScope struct {
 	logr.Logger
 	client          client.Client
 	patchHelper     *patch.Helper
-	AddonConstraint *libsveltosv1alpha1.AddonConstraint
+	AddonCompliance *libsveltosv1alpha1.AddonCompliance
 	controllerName  string
 }
 
 // PatchObject persists the feature configuration and status.
-func (s *AddonConstraintScope) PatchObject(ctx context.Context) error {
+func (s *AddonComplianceScope) PatchObject(ctx context.Context) error {
 	return s.patchHelper.Patch(
 		ctx,
-		s.AddonConstraint,
+		s.AddonCompliance,
 	)
 }
 
 // Close closes the current scope persisting the addonConstraint configuration and status.
-func (s *AddonConstraintScope) Close(ctx context.Context) error {
+func (s *AddonComplianceScope) Close(ctx context.Context) error {
 	return s.PatchObject(ctx)
 }
 
-// Name returns the AddonConstraint name.
-func (s *AddonConstraintScope) Name() string {
-	return s.AddonConstraint.Name
+// Name returns the AddonCompliance name.
+func (s *AddonComplianceScope) Name() string {
+	return s.AddonCompliance.Name
 }
 
 // ControllerName returns the name of the controller that
-// created the AddonConstraintScope.
-func (s *AddonConstraintScope) ControllerName() string {
+// created the AddonComplianceScope.
+func (s *AddonComplianceScope) ControllerName() string {
 	return s.controllerName
 }
 
 // GetSelector returns the ClusterSelector
-func (s *AddonConstraintScope) GetSelector() string {
-	return string(s.AddonConstraint.Spec.ClusterSelector)
+func (s *AddonComplianceScope) GetSelector() string {
+	return string(s.AddonCompliance.Spec.ClusterSelector)
 }
 
 // SetMatchingClusterRefs sets the feature status.
-func (s *AddonConstraintScope) SetMatchingClusterRefs(matchingClusters []corev1.ObjectReference) {
-	s.AddonConstraint.Status.MatchingClusterRefs = matchingClusters
+func (s *AddonComplianceScope) SetMatchingClusterRefs(matchingClusters []corev1.ObjectReference) {
+	s.AddonCompliance.Status.MatchingClusterRefs = matchingClusters
 }
 
 // SetFailureMessage sets the failureMessage .
-func (s *AddonConstraintScope) SetFailureMessage(failureMessage *string) {
-	s.AddonConstraint.Status.FailureMessage = failureMessage
+func (s *AddonComplianceScope) SetFailureMessage(failureMessage *string) {
+	s.AddonCompliance.Status.FailureMessage = failureMessage
 }
 
-// UpdateLabels updates AddonConstraint labels using matching clusters
-func (s *AddonConstraintScope) UpdateLabels(matchingClusters []corev1.ObjectReference) {
+// UpdateLabels updates AddonCompliance labels using matching clusters
+func (s *AddonComplianceScope) UpdateLabels(matchingClusters []corev1.ObjectReference) {
 	labels := make(map[string]string)
 
 	for i := range matchingClusters {
@@ -119,5 +119,5 @@ func (s *AddonConstraintScope) UpdateLabels(matchingClusters []corev1.ObjectRefe
 		labels[l] = "ok"
 	}
 
-	s.AddonConstraint.Labels = labels
+	s.AddonCompliance.Labels = labels
 }

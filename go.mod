@@ -1,4 +1,4 @@
-module github.com/projectsveltos/addon-constraint-controller
+module github.com/projectsveltos/addon-compliance-controller
 
 go 1.20
 
@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
 	github.com/pkg/errors v0.9.1
-	github.com/projectsveltos/libsveltos v0.11.1-0.20230615070804-fbfe41402262
+	github.com/projectsveltos/libsveltos v0.11.1-0.20230626065432-955123c9c74a
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.26.2
 	k8s.io/apiextensions-apiserver v0.26.1

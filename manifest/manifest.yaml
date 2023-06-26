@@ -2,19 +2,19 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    control-plane: addon-constraint-manager
+    control-plane: addon-compliance-manager
   name: projectsveltos
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: addon-constraint-manager
+  name: addon-compliance-manager
   namespace: projectsveltos
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: addon-constraint-leader-election-role
+  name: addon-compliance-leader-election-role
   namespace: projectsveltos
 rules:
 - apiGroups:
@@ -52,7 +52,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: addon-constraint-manager-role
+  name: addon-compliance-manager-role
 rules:
 - apiGroups:
   - ""
@@ -115,7 +115,7 @@ rules:
 - apiGroups:
   - lib.projectsveltos.io
   resources:
-  - addonconstraints
+  - addoncompliances
   verbs:
   - create
   - delete
@@ -127,13 +127,13 @@ rules:
 - apiGroups:
   - lib.projectsveltos.io
   resources:
-  - addonconstraints/finalizers
+  - addoncompliances/finalizers
   verbs:
   - update
 - apiGroups:
   - lib.projectsveltos.io
   resources:
-  - addonconstraints/status
+  - addoncompliances/status
   verbs:
   - get
   - patch
@@ -216,7 +216,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: addon-constraint-metrics-reader
+  name: addon-compliance-metrics-reader
 rules:
 - nonResourceURLs:
   - /metrics
@@ -226,7 +226,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: addon-constraint-proxy-role
+  name: addon-compliance-proxy-role
 rules:
 - apiGroups:
   - authentication.k8s.io
@@ -244,41 +244,41 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: addon-constraint-leader-election-rolebinding
+  name: addon-compliance-leader-election-rolebinding
   namespace: projectsveltos
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: addon-constraint-leader-election-role
+  name: addon-compliance-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: addon-constraint-manager
+  name: addon-compliance-manager
   namespace: projectsveltos
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: addon-constraint-manager-rolebinding
+  name: addon-compliance-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: addon-constraint-manager-role
+  name: addon-compliance-manager-role
 subjects:
 - kind: ServiceAccount
-  name: addon-constraint-manager
+  name: addon-compliance-manager
   namespace: projectsveltos
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: addon-constraint-proxy-rolebinding
+  name: addon-compliance-proxy-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: addon-constraint-proxy-role
+  name: addon-compliance-proxy-role
 subjects:
 - kind: ServiceAccount
-  name: addon-constraint-manager
+  name: addon-compliance-manager
   namespace: projectsveltos
 ---
 apiVersion: v1
@@ -307,15 +307,15 @@ data:
     # leaderElectionReleaseOnCancel: true
 kind: ConfigMap
 metadata:
-  name: addon-constraint-manager-config
+  name: addon-compliance-manager-config
   namespace: projectsveltos
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    control-plane: addon-constraint-manager
-  name: addon-constraint-manager-metrics-service
+    control-plane: addon-compliance-manager
+  name: addon-compliance-manager-metrics-service
   namespace: projectsveltos
 spec:
   ports:
@@ -324,26 +324,26 @@ spec:
     protocol: TCP
     targetPort: https
   selector:
-    control-plane: addon-constraint-manager
+    control-plane: addon-compliance-manager
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: addon-constraint-manager
-  name: addon-constraint-manager
+    control-plane: addon-compliance-manager
+  name: addon-compliance-manager
   namespace: projectsveltos
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: addon-constraint-manager
+      control-plane: addon-compliance-manager
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        control-plane: addon-constraint-manager
+        control-plane: addon-compliance-manager
     spec:
       containers:
       - args:
@@ -353,7 +353,7 @@ spec:
         - --v=5
         command:
         - /manager
-        image: projectsveltos/addon-constraint-controller-amd64:dev
+        image: projectsveltos/addon-compliance-controller-amd64:dev
         livenessProbe:
           httpGet:
             path: /healthz
@@ -397,5 +397,5 @@ spec:
             - ALL
       securityContext:
         runAsNonRoot: true
-      serviceAccountName: addon-constraint-manager
+      serviceAccountName: addon-compliance-manager
       terminationGracePeriodSeconds: 10

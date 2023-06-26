@@ -64,7 +64,7 @@ func addTypeInformationToObject(scheme *runtime.Scheme, obj client.Object) {
 	}
 }
 
-func getAddonConstraint(namePrefix string, clusterLabels map[string]string) *libsveltosv1alpha1.AddonConstraint {
+func getAddonCompliance(namePrefix string, clusterLabels map[string]string) *libsveltosv1alpha1.AddonCompliance {
 	selector := ""
 	for k := range clusterLabels {
 		if selector != "" {
@@ -72,11 +72,11 @@ func getAddonConstraint(namePrefix string, clusterLabels map[string]string) *lib
 		}
 		selector += fmt.Sprintf("%s=%s", k, clusterLabels[k])
 	}
-	addonConstraint := &libsveltosv1alpha1.AddonConstraint{
+	addonConstraint := &libsveltosv1alpha1.AddonCompliance{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namePrefix + randomString(),
 		},
-		Spec: libsveltosv1alpha1.AddonConstraintSpec{
+		Spec: libsveltosv1alpha1.AddonComplianceSpec{
 			ClusterSelector: libsveltosv1alpha1.Selector(selector),
 		},
 	}

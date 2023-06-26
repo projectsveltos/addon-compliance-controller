@@ -80,8 +80,8 @@ func (r *SveltosClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		manager := GetManager()
 		clusterInfo := getClusterInfo(sveltosCluster.Namespace, sveltosCluster.Name, libsveltosv1alpha1.ClusterTypeSveltos)
-		if manager.GetNumberOfAddonConstraint(clusterInfo) == 0 {
-			// if there is no AddonConstraint instance matching this cluster,
+		if manager.GetNumberOfAddonCompliance(clusterInfo) == 0 {
+			// if there is no AddonCompliance instance matching this cluster,
 			// cluster is ready to have addons deployed. So annotate it.
 			if err := annotateCluster(ctx, r.Client, clusterInfo); err != nil {
 				return reconcile.Result{}, err
@@ -107,9 +107,9 @@ func removeClusterEntry(clusterNamespace, clusterName string, clusterType libsve
 	manager.RemoveClusterEntry(cluster)
 }
 
-// shouldAddClusterEntry checks whether this is first time addon-constraint sees this cluster.
+// shouldAddClusterEntry checks whether this is first time addon-compliance sees this cluster.
 // Return false if either one of following is verified:
-// - cluster has "addon-constraints-ready" annotation or
+// - cluster has "addon-compliances-ready" annotation or
 // - manager has an entry for this cluster already
 func shouldAddClusterEntry(cluster client.Object, clusterType libsveltosv1alpha1.ClusterType) bool {
 	if cluster.GetAnnotations() != nil {
@@ -128,7 +128,7 @@ func addClusterEntry(ctx context.Context, c client.Client,
 	clusterNamespace, clusterName string, clusterType libsveltosv1alpha1.ClusterType,
 	clusterLabels map[string]string, logger logr.Logger) error {
 
-	addonConstraints := &libsveltosv1alpha1.AddonConstraintList{}
+	addonConstraints := &libsveltosv1alpha1.AddonComplianceList{}
 	if err := c.List(ctx, addonConstraints); err != nil {
 		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to collect addonConstraints: %v", err))
 		return err

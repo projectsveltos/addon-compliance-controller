@@ -1,4 +1,4 @@
-module github.com/projectsveltos/addon-constraint-controller/hack/tools
+module github.com/projectsveltos/addon-compliance-controller/hack/tools
 
 go 1.20
 
