@@ -32,6 +32,7 @@ var (
 	CollectContentOfConfigMap          = (*AddonComplianceReconciler).collectContentOfConfigMap
 	CollectContentOfSecret             = (*AddonComplianceReconciler).collectContentOfSecret
 	CollectOpenapiValidations          = (*AddonComplianceReconciler).collectOpenapiValidations
+	CollectLuaValidations              = (*AddonComplianceReconciler).collectLuaValidations
 )
 
 var (

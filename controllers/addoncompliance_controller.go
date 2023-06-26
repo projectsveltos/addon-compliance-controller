@@ -26,6 +26,7 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -218,6 +219,14 @@ func (r *AddonComplianceReconciler) reconcileNormal(
 		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
 	}
 	addonConstraintScope.AddonCompliance.Status.OpenapiValidations = validations
+
+	validations, err = r.collectLuaValidations(ctx, addonConstraintScope, logger)
+	if err != nil {
+		failureMsg := err.Error()
+		addonConstraintScope.SetFailureMessage(&failureMsg)
+		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
+	}
+	addonConstraintScope.AddonCompliance.Status.LuaValidations = validations
 
 	err = r.annotateClusters(ctx, addonConstraintScope, logger)
 	if err != nil {
@@ -490,7 +499,7 @@ func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *s
 		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Namespace
 		referencedName := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Name
 
-		apiVersion := getOpenapiReferenceAPIVersion(&addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i])
+		apiVersion := getReferenceAPIVersion(addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind)
 		currentReferences.Insert(&corev1.ObjectReference{
 			APIVersion: apiVersion,
 			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
@@ -498,6 +507,19 @@ func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *s
 			Name:       referencedName,
 		})
 	}
+	for i := range addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs {
+		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Namespace
+		referencedName := addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Name
+
+		apiVersion := getReferenceAPIVersion(addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Kind)
+		currentReferences.Insert(&corev1.ObjectReference{
+			APIVersion: apiVersion,
+			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
+			Namespace:  referencedNamespace,
+			Name:       referencedName,
+		})
+	}
+
 	return currentReferences
 }
 
@@ -508,41 +530,89 @@ func (r *AddonComplianceReconciler) collectOpenapiValidations(ctx context.Contex
 	validations := make(map[string][]byte)
 	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
 		ref := &addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i]
-		referencedNamespace := ref.Namespace
-		referencedName := ref.Name
-		apiVersion := getOpenapiReferenceAPIVersion(&addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i])
-
-		var err error
-
-		objRef := &corev1.ObjectReference{
-			APIVersion: apiVersion,
-			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
-			Namespace:  referencedNamespace,
-			Name:       referencedName,
-		}
-
-		var tmpValidations [][]byte
-		switch ref.Kind {
-		case string(libsveltosv1alpha1.ConfigMapReferencedResourceKind):
-			tmpValidations, err = r.collectContentOfConfigMap(ctx, objRef, logger)
-		case string(libsveltosv1alpha1.SecretReferencedResourceKind):
-			tmpValidations, err = r.collectContentOfSecret(ctx, objRef, logger)
-		case sourcev1b2.OCIRepositoryKind:
-		case sourcev1b2.BucketKind:
-		case sourcev1.GitRepositoryKind:
-			tmpValidations, err = r.collectContentFromFluxSource(ctx, objRef, ref.Path, logger)
-		}
-
+		currentValidation, err := r.collectValidations(ctx, ref.Kind, ref.Namespace, ref.Name, ref.Path, logger)
 		if err != nil {
-			logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to collect content of %s:%s/%s. Err: %v",
-				ref.Kind, ref.Namespace, ref.Name, err))
 			return nil, err
 		}
+		for k := range currentValidation {
+			loader := &openapi3.Loader{Context: ctx, IsExternalRefsAllowed: true}
 
-		for i := range tmpValidations {
-			key := fmt.Sprintf("%s:%s/%s-%d", ref.Kind, ref.Namespace, ref.Name, i)
-			validations[key] = tmpValidations[i]
+			// Load the OpenAPI specification from the content
+			doc, err := loader.LoadFromData([]byte(currentValidation[k]))
+			if err != nil {
+				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to loadFromData: %v", err))
+				return nil, err
+			}
+
+			err = doc.Validate(ctx)
+			if err != nil {
+				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to validate: %v", err))
+				return nil, err
+			}
+
+			validations[k] = currentValidation[k]
 		}
+
+	}
+
+	return validations, nil
+}
+
+func (r *AddonComplianceReconciler) collectLuaValidations(ctx context.Context,
+	addonConstraintScope *scope.AddonComplianceScope, logger logr.Logger) (map[string][]byte, error) {
+
+	logger.V(logs.LogDebug).Info("collect lua validations")
+	validations := make(map[string][]byte)
+	for i := range addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs {
+		ref := &addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i]
+		currentValidation, err := r.collectValidations(ctx, ref.Kind, ref.Namespace, ref.Name, ref.Path, logger)
+		if err != nil {
+			return nil, err
+		}
+		for k := range currentValidation {
+			validations[k] = currentValidation[k]
+		}
+	}
+
+	return validations, nil
+}
+
+func (r *AddonComplianceReconciler) collectValidations(ctx context.Context,
+	kind, referencedNamespace, referencedName, path string, logger logr.Logger) (map[string][]byte, error) {
+
+	validations := make(map[string][]byte)
+	apiVersion := getReferenceAPIVersion(kind)
+
+	var err error
+
+	objRef := &corev1.ObjectReference{
+		APIVersion: apiVersion,
+		Kind:       kind,
+		Namespace:  referencedNamespace,
+		Name:       referencedName,
+	}
+
+	var tmpValidations [][]byte
+	switch kind {
+	case string(libsveltosv1alpha1.ConfigMapReferencedResourceKind):
+		tmpValidations, err = r.collectContentOfConfigMap(ctx, objRef, logger)
+	case string(libsveltosv1alpha1.SecretReferencedResourceKind):
+		tmpValidations, err = r.collectContentOfSecret(ctx, objRef, logger)
+	case sourcev1b2.OCIRepositoryKind:
+	case sourcev1b2.BucketKind:
+	case sourcev1.GitRepositoryKind:
+		tmpValidations, err = r.collectContentFromFluxSource(ctx, objRef, path, logger)
+	}
+
+	if err != nil {
+		logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to collect content of %s:%s/%s. Err: %v",
+			kind, referencedNamespace, referencedName, err))
+		return nil, err
+	}
+
+	for i := range tmpValidations {
+		key := fmt.Sprintf("%s:%s/%s-%d", kind, referencedNamespace, referencedName, i)
+		validations[key] = tmpValidations[i]
 	}
 
 	return validations, nil
