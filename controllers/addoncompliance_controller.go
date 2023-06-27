@@ -514,7 +514,7 @@ func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *s
 		apiVersion := getReferenceAPIVersion(addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Kind)
 		currentReferences.Insert(&corev1.ObjectReference{
 			APIVersion: apiVersion,
-			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
+			Kind:       addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Kind,
 			Namespace:  referencedNamespace,
 			Name:       referencedName,
 		})
