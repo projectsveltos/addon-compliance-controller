@@ -181,13 +181,22 @@ var _ = Describe("AddonCompliance Controller", func() {
 			},
 		}
 
+		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
+			{
+				Namespace: namespace,
+				Name:      randomString(),
+				Kind:      string(libsveltosv1alpha1.SecretReferencedResourceKind),
+			},
+		}
+
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
 		set := controllers.GetCurrentReferences(reconciler, addonConstraintScope)
-		Expect(set.Len()).To(Equal(2))
+		Expect(set.Len()).To(Equal(3))
 		items := set.Items()
+		foundSecret := false
 		foundConfigMap := false
 		foundGitRepository := false
 		for i := range items {
@@ -195,8 +204,11 @@ var _ = Describe("AddonCompliance Controller", func() {
 				foundGitRepository = true
 			} else if items[i].Kind == string(libsveltosv1alpha1.ConfigMapReferencedResourceKind) {
 				foundConfigMap = true
+			} else if items[i].Kind == string(libsveltosv1alpha1.SecretReferencedResourceKind) {
+				foundSecret = true
 			}
 		}
+		Expect(foundSecret).To(BeTrue())
 		Expect(foundConfigMap).To(BeTrue())
 		Expect(foundGitRepository).To(BeTrue())
 	})
