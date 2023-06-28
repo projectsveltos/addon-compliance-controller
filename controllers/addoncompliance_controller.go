@@ -254,7 +254,7 @@ func (r *AddonComplianceReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 
 	// When ConfigMap changes, according to ConfigMapPredicates,
 	// one or more AddonCompliances need to be reconciled.
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.ConfigMap{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForReference),
 		ConfigMapPredicates(mgr.GetLogger().WithValues("predicate", "configmappredicate")),
 	)
@@ -264,7 +264,7 @@ func (r *AddonComplianceReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 
 	// When Secret changes, according to SecretPredicates,
 	// one or more AddonCompliances need to be reconciled.
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}},
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForReference),
 		SecretPredicates(mgr.GetLogger().WithValues("predicate", "secretpredicate")),
 	)
@@ -274,7 +274,7 @@ func (r *AddonComplianceReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 
 	// When projectsveltos cluster changes, according to SveltosClusterPredicates,
 	// one or more AddonCompliances need to be reconciled.
-	err = c.Watch(&source.Kind{Type: &libsveltosv1alpha1.SveltosCluster{}},
+	err = c.Watch(source.Kind(mgr.GetCache(), &libsveltosv1alpha1.SveltosCluster{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForCluster),
 		SveltosClusterPredicates(mgr.GetLogger().WithValues("predicate", "sveltosclusterpredicate")),
 	)
@@ -285,7 +285,7 @@ func (r *AddonComplianceReconciler) SetupWithManager(mgr ctrl.Manager) (controll
 func (r *AddonComplianceReconciler) WatchForCAPI(mgr ctrl.Manager, c controller.Controller) error {
 	// When cluster-api cluster changes, according to ClusterPredicates,
 	// one or more AddonCompliances need to be reconciled.
-	if err := c.Watch(&source.Kind{Type: &clusterv1.Cluster{}},
+	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForCluster),
 		ClusterPredicates(mgr.GetLogger().WithValues("predicate", "clusterpredicate")),
 	); err != nil {
@@ -293,7 +293,7 @@ func (r *AddonComplianceReconciler) WatchForCAPI(mgr ctrl.Manager, c controller.
 	}
 	// When cluster-api machine changes, according to ClusterPredicates,
 	// one or more AddonCompliances need to be reconciled.
-	if err := c.Watch(&source.Kind{Type: &clusterv1.Machine{}},
+	if err := c.Watch(source.Kind(mgr.GetCache(), &clusterv1.Machine{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForMachine),
 		MachinePredicates(mgr.GetLogger().WithValues("predicate", "machinepredicate")),
 	); err != nil {
@@ -307,7 +307,7 @@ func (r *AddonComplianceReconciler) WatchForFlux(mgr ctrl.Manager, c controller.
 	// When a Flux source (GitRepository/OCIRepository/Bucket) changes, one or more addonConstraints
 	// need to be reconciled.
 
-	err := c.Watch(&source.Kind{Type: &sourcev1.GitRepository{}},
+	err := c.Watch(source.Kind(mgr.GetCache(), &sourcev1.GitRepository{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForFluxSources),
 		FluxSourcePredicates(r.Scheme, mgr.GetLogger().WithValues("predicate", "fluxsourcepredicate")),
 	)
@@ -315,7 +315,7 @@ func (r *AddonComplianceReconciler) WatchForFlux(mgr ctrl.Manager, c controller.
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &sourcev1b2.OCIRepository{}},
+	err = c.Watch(source.Kind(mgr.GetCache(), &sourcev1b2.OCIRepository{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForFluxSources),
 		FluxSourcePredicates(r.Scheme, mgr.GetLogger().WithValues("predicate", "fluxsourcepredicate")),
 	)
@@ -323,7 +323,7 @@ func (r *AddonComplianceReconciler) WatchForFlux(mgr ctrl.Manager, c controller.
 		return err
 	}
 
-	return c.Watch(&source.Kind{Type: &sourcev1b2.Bucket{}},
+	return c.Watch(source.Kind(mgr.GetCache(), &sourcev1b2.Bucket{}),
 		handler.EnqueueRequestsFromMapFunc(r.requeueAddonComplianceForFluxSources),
 		FluxSourcePredicates(r.Scheme, mgr.GetLogger().WithValues("predicate", "fluxsourcepredicate")),
 	)

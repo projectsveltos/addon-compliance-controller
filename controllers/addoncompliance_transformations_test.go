@@ -17,6 +17,8 @@ limitations under the License.
 package controllers_test
 
 import (
+	"context"
+
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -94,7 +96,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests := controllers.RequeueAddonComplianceForReference(reconciler, configMap)
+		requests := controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), configMap)
 		Expect(requests).To(HaveLen(1))
 		Expect(requests[0].Name).To(Equal(addonConstraint0.Name))
 		Expect(requests[0].Namespace).To(Equal(addonConstraint0.Namespace))
@@ -103,7 +105,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint1.Namespace, Name: addonConstraint1.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests = controllers.RequeueAddonComplianceForReference(reconciler, configMap)
+		requests = controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), configMap)
 		Expect(requests).To(HaveLen(2))
 		Expect(requests).To(ContainElement(
 			reconcile.Request{NamespacedName: types.NamespacedName{Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name}}))
@@ -173,7 +175,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests := controllers.RequeueAddonComplianceForReference(reconciler, gitRepo)
+		requests := controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), gitRepo)
 		Expect(requests).To(HaveLen(1))
 		Expect(requests[0].Name).To(Equal(addonConstraint0.Name))
 		Expect(requests[0].Namespace).To(Equal(addonConstraint0.Namespace))
@@ -182,7 +184,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint1.Namespace, Name: addonConstraint1.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests = controllers.RequeueAddonComplianceForReference(reconciler, gitRepo)
+		requests = controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), gitRepo)
 		Expect(requests).To(HaveLen(2))
 		Expect(requests).To(ContainElement(
 			reconcile.Request{NamespacedName: types.NamespacedName{Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name}}))

@@ -31,4 +31,6 @@ config/default/manager_pull_policy.yaml-e
 
 version.txt
 
+test/fv/out.json
+
 .dockerignore

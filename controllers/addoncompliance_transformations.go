@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"fmt"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
@@ -34,7 +35,7 @@ import (
 )
 
 func (r *AddonComplianceReconciler) requeueAddonComplianceForFluxSources(
-	o client.Object,
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	logger := klogr.New().WithValues(
@@ -101,7 +102,7 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForFluxSources(
 }
 
 func (r *AddonComplianceReconciler) requeueAddonComplianceForReference(
-	o client.Object,
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	logger := klogr.New().WithValues(
@@ -161,7 +162,7 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForReference(
 }
 
 func (r *AddonComplianceReconciler) requeueAddonComplianceForCluster(
-	o client.Object,
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	cluster := o
@@ -222,7 +223,7 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForCluster(
 }
 
 func (r *AddonComplianceReconciler) requeueAddonComplianceForMachine(
-	o client.Object,
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	machine := o.(*clusterv1.Machine)
