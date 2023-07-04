@@ -26,9 +26,11 @@ hack/tools/bin/
 test/fv/workload_kubeconfig
 bin/manager
 
-manager_image_patch.yaml-e
-manager_pull_policy.yaml-e
+config/default/manager_image_patch.yaml-e
+config/default/manager_pull_policy.yaml-e
 
 version.txt
+
+test/fv/out.json
 
 .dockerignore

@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
@@ -120,16 +120,47 @@ components:
       type: string
       maxLength: 10
 `
+
+	deploymentReplicaCheck = `
+function evaluate()
+  local hs = {}
+  hs.valid = true
+  hs.message = ""
+
+  local deployments = {}
+  local pattern = "^prod"
+  
+  -- Separate deployments and services from the resources
+  for _, resource in ipairs(resources) do
+    if resource.kind == "Deployment" then
+      table.insert(deployments, resource)
+    end
+  end
+
+  -- Check for each deployment if there is a matching service
+  for _, deployment in ipairs(deployments) do
+    local deploymentInfo = deployment.metadata.namespace .. "/" .. deployment.metadata.name
+    
+    if not string.match(deployment.metadata.name, pattern) then
+      hs.message = "No matching service found for deployment: " .. deploymentInfo
+      hs.valid = false
+      break
+    end
+  end
+
+  return hs
+end
+`
 )
 
-var _ = Describe("AddonConstraint Controller", func() {
+var _ = Describe("AddonCompliance Controller", func() {
 	var namespace string
-	var addonConstraint *libsveltosv1alpha1.AddonConstraint
+	var addonConstraint *libsveltosv1alpha1.AddonCompliance
 
 	BeforeEach(func() {
 		namespace = "reconcile" + randomString()
 
-		addonConstraint = &libsveltosv1alpha1.AddonConstraint{
+		addonConstraint = &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
@@ -150,13 +181,22 @@ var _ = Describe("AddonConstraint Controller", func() {
 			},
 		}
 
+		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
+			{
+				Namespace: namespace,
+				Name:      randomString(),
+				Kind:      string(libsveltosv1alpha1.SecretReferencedResourceKind),
+			},
+		}
+
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-		addonConstraintScope := getAddonConstraintScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonConstraintReconciler(c)
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
 		set := controllers.GetCurrentReferences(reconciler, addonConstraintScope)
-		Expect(set.Len()).To(Equal(2))
+		Expect(set.Len()).To(Equal(3))
 		items := set.Items()
+		foundSecret := false
 		foundConfigMap := false
 		foundGitRepository := false
 		for i := range items {
@@ -164,8 +204,11 @@ var _ = Describe("AddonConstraint Controller", func() {
 				foundGitRepository = true
 			} else if items[i].Kind == string(libsveltosv1alpha1.ConfigMapReferencedResourceKind) {
 				foundConfigMap = true
+			} else if items[i].Kind == string(libsveltosv1alpha1.SecretReferencedResourceKind) {
+				foundSecret = true
 			}
 		}
+		Expect(foundSecret).To(BeTrue())
 		Expect(foundConfigMap).To(BeTrue())
 		Expect(foundGitRepository).To(BeTrue())
 	})
@@ -203,8 +246,8 @@ var _ = Describe("AddonConstraint Controller", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 
-		addonConstraintScope := getAddonConstraintScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonConstraintReconciler(c)
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
 
 		// Only clusterSelector is, so only matchingCluster is a match
 		matching, err := controllers.GetMatchingClusters(reconciler, context.TODO(), addonConstraintScope, klogr.New())
@@ -212,7 +255,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		Expect(len(matching)).To(Equal(1))
 	})
 
-	It("updateReferenceMap updates internal map containg mapping between AddonConstraint and referenced resources", func() {
+	It("updateReferenceMap updates internal map containg mapping between AddonCompliance and referenced resources", func() {
 		gitRepository := &corev1.ObjectReference{
 			Kind:       sourcev1.GitRepositoryKind,
 			Namespace:  namespace,
@@ -229,7 +272,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		addonConstraintInfo := &corev1.ObjectReference{
 			Namespace:  addonConstraint.Namespace,
 			Name:       addonConstraint.Name,
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
@@ -248,8 +291,8 @@ var _ = Describe("AddonConstraint Controller", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-		addonConstraintScope := getAddonConstraintScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonConstraintReconciler(c)
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
 		controllers.UpdateReferenceMap(reconciler, addonConstraintScope, klogr.New())
 
 		Expect(len(reconciler.ReferenceMap)).To(Equal(2))
@@ -266,18 +309,18 @@ var _ = Describe("AddonConstraint Controller", func() {
 		items = v.Items()
 		Expect(items).To(ContainElement(*addonConstraintInfo))
 
-		references, ok := reconciler.AddonConstraintToReferenceMap[types.NamespacedName{Name: addonConstraintInfo.Name}]
+		references, ok := reconciler.AddonComplianceToReferenceMap[types.NamespacedName{Name: addonConstraintInfo.Name}]
 		Expect(ok).To(BeTrue())
 		Expect(references.Len()).To(Equal(2))
 		Expect(references.Items()).To(ContainElement(*gitRepository))
 		Expect(references.Items()).To(ContainElement(*configMap))
 	})
 
-	It("updateClusterMap updates internal map containg mapping between AddonConstraint and matching clusters", func() {
+	It("updateClusterMap updates internal map containg mapping between AddonCompliance and matching clusters", func() {
 		addonConstraintInfo := &corev1.ObjectReference{
 			Namespace:  addonConstraint.Namespace,
 			Name:       addonConstraint.Name,
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
@@ -300,8 +343,8 @@ var _ = Describe("AddonConstraint Controller", func() {
 		}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		addonConstraintScope := getAddonConstraintScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonConstraintReconciler(c)
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
 
 		// Only clusterSelector is, so only matchingCluster is a match
 		controllers.UpdateClusterMap(reconciler, addonConstraintScope, klogr.New())
@@ -312,13 +355,13 @@ var _ = Describe("AddonConstraint Controller", func() {
 		items := v.Items()
 		Expect(items).To(ContainElement(*addonConstraintInfo))
 
-		clusters, ok := reconciler.AddonConstraintToClusterMap[types.NamespacedName{Name: addonConstraintInfo.Name}]
+		clusters, ok := reconciler.AddonComplianceToClusterMap[types.NamespacedName{Name: addonConstraintInfo.Name}]
 		Expect(ok).To(BeTrue())
 		Expect(clusters.Len()).To(Equal(1))
 		Expect(clusters.Items()).To(ContainElement(*matchingCluster))
 	})
 
-	It("cleanMaps removes any entry for a given AddonConstraint", func() {
+	It("cleanMaps removes any entry for a given AddonCompliance", func() {
 		matchingCluster := &corev1.ObjectReference{
 			Kind:       "Cluster",
 			Namespace:  namespace,
@@ -342,13 +385,13 @@ var _ = Describe("AddonConstraint Controller", func() {
 		addonConstraintInfo := &corev1.ObjectReference{
 			Namespace:  addonConstraint.Namespace,
 			Name:       addonConstraint.Name,
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
-		addonConstraintScope := getAddonConstraintScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonConstraintReconciler(c)
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
 
 		addonConstraintName := types.NamespacedName{Name: addonConstraintScope.Name()}
 
@@ -358,25 +401,25 @@ var _ = Describe("AddonConstraint Controller", func() {
 		currentReferences := &libsveltosset.Set{}
 		currentReferences.Insert(gitRepository)
 		currentReferences.Insert(configMap)
-		reconciler.AddonConstraintToReferenceMap[addonConstraintName] = currentReferences
+		reconciler.AddonComplianceToReferenceMap[addonConstraintName] = currentReferences
 		reconciler.ReferenceMap[*gitRepository] = addonConstraintSet
 		reconciler.ReferenceMap[*configMap] = addonConstraintSet
 
 		currentClusters := &libsveltosset.Set{}
 		currentClusters.Insert(matchingCluster)
-		reconciler.AddonConstraintToClusterMap[addonConstraintName] = currentClusters
+		reconciler.AddonComplianceToClusterMap[addonConstraintName] = currentClusters
 		reconciler.ClusterMap[*matchingCluster] = addonConstraintSet
 
 		controllers.CleanMaps(reconciler, addonConstraintScope)
 
 		// No more entry for the AddonConstrain instance
-		_, ok := reconciler.AddonConstraintToReferenceMap[addonConstraintName]
+		_, ok := reconciler.AddonComplianceToReferenceMap[addonConstraintName]
 		Expect(ok).To(BeFalse())
-		_, ok = reconciler.AddonConstraintToClusterMap[addonConstraintName]
+		_, ok = reconciler.AddonComplianceToClusterMap[addonConstraintName]
 		Expect(ok).To(BeFalse())
 
 		// Any referenced object will remove being referenced by the AddonConstrain item
-		// Since no other AddonConstraint is referencing, entry will be removed
+		// Since no other AddonCompliance is referencing, entry will be removed
 		_, ok = reconciler.ReferenceMap[*gitRepository]
 		Expect(ok).To(BeFalse())
 		_, ok = reconciler.ReferenceMap[*configMap]
@@ -391,7 +434,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		initObjects := []client.Object{configMap}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		reconciler := getAddonConstraintReconciler(c)
+		reconciler := getAddonComplianceReconciler(c)
 
 		ref := &corev1.ObjectReference{
 			Kind:       string(libsveltosv1alpha1.ConfigMapReferencedResourceKind),
@@ -411,7 +454,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		initObjects := []client.Object{secret}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		reconciler := getAddonConstraintReconciler(c)
+		reconciler := getAddonComplianceReconciler(c)
 
 		ref := &corev1.ObjectReference{
 			Kind:       string(libsveltosv1alpha1.SecretReferencedResourceKind),
@@ -425,7 +468,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		Expect(len(u)).To(Equal(2))
 	})
 
-	It("collectOpenapiValidations updates AddonConstraint status", func() {
+	It("collectOpenapiValidations updates AddonCompliance status", func() {
 		configMap := createConfigMapWithPolicy(randomString(), randomString(), []string{nameSpec, deplReplicaSpec}...)
 
 		addonConstraint.Spec.OpenAPIValidationRefs = []libsveltosv1alpha1.OpenAPIValidationRef{
@@ -436,14 +479,35 @@ var _ = Describe("AddonConstraint Controller", func() {
 		initObjects := []client.Object{configMap, addonConstraint}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		addonConstraintScope := getAddonConstraintScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonConstraintReconciler(c)
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
 
 		result, err := controllers.CollectOpenapiValidations(reconciler, context.TODO(),
 			addonConstraintScope, klogr.New())
 		Expect(err).To(BeNil())
 		Expect(result).ToNot(BeNil())
 		Expect(len(result)).To(Equal(2))
+	})
+
+	It("collectLuaValidations updates AddonCompliance status", func() {
+		configMap := createConfigMapWithPolicy(randomString(), randomString(), []string{deploymentReplicaCheck}...)
+
+		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
+			{Namespace: configMap.Namespace, Name: configMap.Name,
+				Kind: string(libsveltosv1alpha1.ConfigMapReferencedResourceKind)},
+		}
+
+		initObjects := []client.Object{configMap, addonConstraint}
+
+		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
+		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		reconciler := getAddonComplianceReconciler(c)
+
+		result, err := controllers.CollectLuaValidations(reconciler, context.TODO(),
+			addonConstraintScope, klogr.New())
+		Expect(err).To(BeNil())
+		Expect(result).ToNot(BeNil())
+		Expect(len(result)).To(Equal(1))
 	})
 
 	It("Reconciliation updates manager.addonConstraints", func() {
@@ -468,11 +532,11 @@ var _ = Describe("AddonConstraint Controller", func() {
 
 		addonConstraintInfo := &corev1.ObjectReference{
 			Name:       addonConstraint.Name,
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
-		// Set managet so that for cluster, this AddonConstraint instance
+		// Set managet so that for cluster, this AddonCompliance instance
 		// was marked as a match
 		controllers.Reset()
 		manager := controllers.GetManager()
@@ -482,13 +546,13 @@ var _ = Describe("AddonConstraint Controller", func() {
 		(*m)[clusterRef] = s
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		reconciler := getAddonConstraintReconciler(c)
+		reconciler := getAddonComplianceReconciler(c)
 
 		addonConstraintName := client.ObjectKey{
 			Name: addonConstraint.Name,
 		}
 		// Reconcile. After reconciliation expect that:
-		// 1. AddonConstraint instance is not marked as match for cluster in manager anymore
+		// 1. AddonCompliance instance is not marked as match for cluster in manager anymore
 		// 2. cluster has been annotate
 		_, err := reconciler.Reconcile(context.TODO(), ctrl.Request{
 			NamespacedName: addonConstraintName,

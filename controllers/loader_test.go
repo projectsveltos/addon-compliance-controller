@@ -22,12 +22,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
 
-var _ = Describe("AddonConstraint Controller", func() {
+var _ = Describe("AddonCompliance Controller", func() {
 	It("HasEntryForCluster returns true only when entry is present", func() {
 		controllers.Reset()
 		manager := controllers.GetManager()
@@ -85,7 +85,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		Expect(manager.HasEntryForCluster(cluster)).To(BeFalse())
 	})
 
-	It("RemoveAddonConstraint removes AddonConstraint properly", func() {
+	It("RemoveAddonCompliance removes AddonCompliance properly", func() {
 		controllers.Reset()
 		manager := controllers.GetManager()
 
@@ -105,7 +105,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 
 		addonConstraint := &corev1.ObjectReference{
 			Name:       randomString(),
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
@@ -116,12 +116,12 @@ var _ = Describe("AddonConstraint Controller", func() {
 		s.Insert(addonConstraint)
 		(*m)[*cluster2] = &s
 
-		Expect(manager.GetNumberOfAddonConstraint(cluster1)).To(Equal(0))
-		Expect(manager.GetNumberOfAddonConstraint(cluster2)).To(Equal(1))
+		Expect(manager.GetNumberOfAddonCompliance(cluster1)).To(Equal(0))
+		Expect(manager.GetNumberOfAddonCompliance(cluster2)).To(Equal(1))
 
 		// addonConstraint was a match only for cluster2. So expect
 		// cluster2 to be present in result.
-		result := manager.RemoveAddonConstraint(addonConstraint)
+		result := manager.RemoveAddonCompliance(addonConstraint)
 		Expect(len(result)).To(Equal(1))
 		Expect(result).To(ContainElement(cluster2))
 
@@ -129,7 +129,7 @@ var _ = Describe("AddonConstraint Controller", func() {
 		Expect((*m)[*cluster2].Len()).To(BeZero())
 	})
 
-	It("GetNumberOfAddonConstraint returns number of addonconstraint yet to be evaluated", func() {
+	It("GetNumberOfAddonCompliance returns number of addoncompliance yet to be evaluated", func() {
 		controllers.Reset()
 		manager := controllers.GetManager()
 
@@ -140,11 +140,11 @@ var _ = Describe("AddonConstraint Controller", func() {
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
-		Expect(manager.GetNumberOfAddonConstraint(cluster)).To(BeZero())
+		Expect(manager.GetNumberOfAddonCompliance(cluster)).To(BeZero())
 
 		addonConstraint1 := &corev1.ObjectReference{
 			Name:       randomString(),
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
@@ -154,21 +154,21 @@ var _ = Describe("AddonConstraint Controller", func() {
 		(*m)[*cluster] = &s
 
 		s.Insert(addonConstraint1)
-		Expect(manager.GetNumberOfAddonConstraint(cluster)).To(Equal(1))
+		Expect(manager.GetNumberOfAddonCompliance(cluster)).To(Equal(1))
 
 		addonConstraint2 := &corev1.ObjectReference{
 			Name:       randomString(),
-			Kind:       libsveltosv1alpha1.AddonConstraintKind,
+			Kind:       libsveltosv1alpha1.AddonComplianceKind,
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
 		s.Insert(addonConstraint2)
-		Expect(manager.GetNumberOfAddonConstraint(cluster)).To(Equal(2))
+		Expect(manager.GetNumberOfAddonCompliance(cluster)).To(Equal(2))
 
 		s.Erase(addonConstraint1)
-		Expect(manager.GetNumberOfAddonConstraint(cluster)).To(Equal(1))
+		Expect(manager.GetNumberOfAddonCompliance(cluster)).To(Equal(1))
 
 		s.Erase(addonConstraint2)
-		Expect(manager.GetNumberOfAddonConstraint(cluster)).To(BeZero())
+		Expect(manager.GetNumberOfAddonCompliance(cluster)).To(BeZero())
 	})
 })

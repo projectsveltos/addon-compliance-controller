@@ -73,8 +73,8 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		manager := GetManager()
 		clusterInfo := getClusterInfo(cluster.Namespace, cluster.Name, libsveltosv1alpha1.ClusterTypeCapi)
-		if manager.GetNumberOfAddonConstraint(clusterInfo) == 0 {
-			// if there is no AddonConstraint instance matching this cluster,
+		if manager.GetNumberOfAddonCompliance(clusterInfo) == 0 {
+			// if there is no AddonCompliance instance matching this cluster,
 			// cluster is ready to have addons deployed. So annotate it.
 			if err := annotateCluster(ctx, r.Client, clusterInfo); err != nil {
 				return reconcile.Result{}, err

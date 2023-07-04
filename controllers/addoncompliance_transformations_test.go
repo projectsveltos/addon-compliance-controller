@@ -17,6 +17,8 @@ limitations under the License.
 package controllers_test
 
 import (
+	"context"
+
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,13 +30,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
 
-var _ = Describe("AddonConstraintTransformation map functions", func() {
-	It("RequeueAddonConstraintForReference returns AddonConstraint referencing a given ConfigMap", func() {
+var _ = Describe("AddonComplianceTransformation map functions", func() {
+	It("RequeueAddonComplianceForReference returns AddonCompliance referencing a given ConfigMap", func() {
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
@@ -44,12 +46,12 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 
 		controllers.AddTypeInformationToObject(scheme, configMap)
 
-		addonConstraint0 := &libsveltosv1alpha1.AddonConstraint{
+		addonConstraint0 := &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
 				Namespace: randomString(),
 			},
-			Spec: libsveltosv1alpha1.AddonConstraintSpec{
+			Spec: libsveltosv1alpha1.AddonComplianceSpec{
 				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
 					{
 						Namespace: configMap.Namespace,
@@ -60,12 +62,12 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 			},
 		}
 
-		addonConstraint1 := &libsveltosv1alpha1.AddonConstraint{
+		addonConstraint1 := &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
 				Namespace: randomString(),
 			},
-			Spec: libsveltosv1alpha1.AddonConstraintSpec{
+			Spec: libsveltosv1alpha1.AddonComplianceSpec{
 				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
 					{
 						Namespace: randomString(),
@@ -84,26 +86,26 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 
-		reconciler := getAddonConstraintReconciler(c)
+		reconciler := getAddonComplianceReconciler(c)
 
 		set := libsveltosset.Set{}
 		key := corev1.ObjectReference{APIVersion: configMap.APIVersion,
 			Kind: string(libsveltosv1alpha1.ConfigMapReferencedResourceKind), Namespace: configMap.Namespace, Name: configMap.Name}
 
 		set.Insert(&corev1.ObjectReference{APIVersion: libsveltosv1alpha1.GroupVersion.String(),
-			Kind: libsveltosv1alpha1.AddonConstraintKind, Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name})
+			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests := controllers.RequeueAddonConstraintForReference(reconciler, configMap)
+		requests := controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), configMap)
 		Expect(requests).To(HaveLen(1))
 		Expect(requests[0].Name).To(Equal(addonConstraint0.Name))
 		Expect(requests[0].Namespace).To(Equal(addonConstraint0.Namespace))
 
 		set.Insert(&corev1.ObjectReference{APIVersion: libsveltosv1alpha1.GroupVersion.String(),
-			Kind: libsveltosv1alpha1.AddonConstraintKind, Namespace: addonConstraint1.Namespace, Name: addonConstraint1.Name})
+			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint1.Namespace, Name: addonConstraint1.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests = controllers.RequeueAddonConstraintForReference(reconciler, configMap)
+		requests = controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), configMap)
 		Expect(requests).To(HaveLen(2))
 		Expect(requests).To(ContainElement(
 			reconcile.Request{NamespacedName: types.NamespacedName{Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name}}))
@@ -112,8 +114,8 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 	})
 })
 
-var _ = Describe("AddonConstraintTransformation map functions", func() {
-	It("RequeueAddonConstraintForFluxSources returns AddonConstraint referencing a given GitRepository", func() {
+var _ = Describe("AddonComplianceTransformation map functions", func() {
+	It("RequeueAddonComplianceForFluxSources returns AddonCompliance referencing a given GitRepository", func() {
 		gitRepo := &sourcev1.GitRepository{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
@@ -123,12 +125,12 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 
 		controllers.AddTypeInformationToObject(scheme, gitRepo)
 
-		addonConstraint0 := &libsveltosv1alpha1.AddonConstraint{
+		addonConstraint0 := &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
 				Namespace: randomString(),
 			},
-			Spec: libsveltosv1alpha1.AddonConstraintSpec{
+			Spec: libsveltosv1alpha1.AddonComplianceSpec{
 				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
 					{
 						Namespace: gitRepo.Namespace,
@@ -139,12 +141,12 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 			},
 		}
 
-		addonConstraint1 := &libsveltosv1alpha1.AddonConstraint{
+		addonConstraint1 := &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
 				Namespace: randomString(),
 			},
-			Spec: libsveltosv1alpha1.AddonConstraintSpec{
+			Spec: libsveltosv1alpha1.AddonComplianceSpec{
 				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
 					{
 						Namespace: gitRepo.Namespace,
@@ -163,26 +165,26 @@ var _ = Describe("AddonConstraintTransformation map functions", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 
-		reconciler := getAddonConstraintReconciler(c)
+		reconciler := getAddonComplianceReconciler(c)
 
 		set := libsveltosset.Set{}
 		key := corev1.ObjectReference{APIVersion: gitRepo.APIVersion,
 			Kind: sourcev1.GitRepositoryKind, Namespace: gitRepo.Namespace, Name: gitRepo.Name}
 
 		set.Insert(&corev1.ObjectReference{APIVersion: libsveltosv1alpha1.GroupVersion.String(),
-			Kind: libsveltosv1alpha1.AddonConstraintKind, Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name})
+			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests := controllers.RequeueAddonConstraintForReference(reconciler, gitRepo)
+		requests := controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), gitRepo)
 		Expect(requests).To(HaveLen(1))
 		Expect(requests[0].Name).To(Equal(addonConstraint0.Name))
 		Expect(requests[0].Namespace).To(Equal(addonConstraint0.Namespace))
 
 		set.Insert(&corev1.ObjectReference{APIVersion: libsveltosv1alpha1.GroupVersion.String(),
-			Kind: libsveltosv1alpha1.AddonConstraintKind, Namespace: addonConstraint1.Namespace, Name: addonConstraint1.Name})
+			Kind: libsveltosv1alpha1.AddonComplianceKind, Namespace: addonConstraint1.Namespace, Name: addonConstraint1.Name})
 		reconciler.ReferenceMap[key] = &set
 
-		requests = controllers.RequeueAddonConstraintForReference(reconciler, gitRepo)
+		requests = controllers.RequeueAddonComplianceForReference(reconciler, context.TODO(), gitRepo)
 		Expect(requests).To(HaveLen(2))
 		Expect(requests).To(ContainElement(
 			reconcile.Request{NamespacedName: types.NamespacedName{Namespace: addonConstraint0.Namespace, Name: addonConstraint0.Name}}))

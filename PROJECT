@@ -1,13 +1,13 @@
 domain: projectsveltos.io
 layout:
 - go.kubebuilder.io/v3
-projectName: addon-constraint-controller
-repo: github.com/projectsveltos/addon-constraint-controller
+projectName: addon-compliance-controller
+repo: github.com/projectsveltos/addon-compliance-controller
 resources:
 - controller: true
   domain: projectsveltos.io
   group: lib
-  kind: AddonConstraint
+  kind: AddonCompliance
   version: v1alpha1
 - controller: true
   domain: projectsveltos.io

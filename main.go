@@ -44,12 +44,11 @@ import (
 
 	//+kubebuilder:scaffold:imports
 
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	"github.com/projectsveltos/libsveltos/lib/crd"
 	"github.com/projectsveltos/libsveltos/lib/logsettings"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
-
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
 )
 
 var (
@@ -98,25 +97,25 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	logsettings.RegisterForLogSettings(ctx,
-		libsveltosv1alpha1.ComponentAddonConstraintManager, ctrl.Log.WithName("log-setter"),
+		libsveltosv1alpha1.ComponentAddonComplianceManager, ctrl.Log.WithName("log-setter"),
 		ctrl.GetConfigOrDie())
 
 	var addonConstraintController controller.Controller
-	addonConstraintReconciler := (&controllers.AddonConstraintReconciler{
+	addonConstraintReconciler := (&controllers.AddonComplianceReconciler{
 		Client:                        mgr.GetClient(),
 		Scheme:                        mgr.GetScheme(),
-		AddonConstraints:              make(map[types.NamespacedName]libsveltosv1alpha1.Selector),
+		AddonCompliances:              make(map[types.NamespacedName]libsveltosv1alpha1.Selector),
 		ClusterLabels:                 make(map[corev1.ObjectReference]map[string]string),
 		ClusterMap:                    make(map[corev1.ObjectReference]*libsveltosset.Set),
-		AddonConstraintToClusterMap:   make(map[types.NamespacedName]*libsveltosset.Set),
+		AddonComplianceToClusterMap:   make(map[types.NamespacedName]*libsveltosset.Set),
 		ReferenceMap:                  make(map[corev1.ObjectReference]*libsveltosset.Set),
-		AddonConstraintToReferenceMap: make(map[types.NamespacedName]*libsveltosset.Set),
+		AddonComplianceToReferenceMap: make(map[types.NamespacedName]*libsveltosset.Set),
 		PolicyMux:                     sync.Mutex{},
 		ConcurrentReconciles:          concurrentReconciles,
 	})
 	addonConstraintController, err = addonConstraintReconciler.SetupWithManager(mgr)
 	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "AddonConstraint")
+		setupLog.Error(err, "unable to create controller", "controller", "AddonCompliance")
 		os.Exit(1)
 	}
 	if err = (&controllers.SveltosClusterReconciler{
@@ -217,7 +216,7 @@ func isFluxInstalled(ctx context.Context, c client.Client) (bool, error) {
 }
 
 func fluxWatchers(ctx context.Context, mgr ctrl.Manager,
-	addonConstraintReconciler *controllers.AddonConstraintReconciler, addonConstraintController controller.Controller,
+	addonConstraintReconciler *controllers.AddonComplianceReconciler, addonConstraintController controller.Controller,
 	logger logr.Logger) {
 
 	const maxRetries = 20
@@ -271,7 +270,7 @@ func isCAPIInstalled(ctx context.Context, c client.Client) (bool, error) {
 }
 
 func capiWatchers(ctx context.Context, mgr ctrl.Manager,
-	addonConstraintReconciler *controllers.AddonConstraintReconciler, addonConstraintController controller.Controller,
+	addonConstraintReconciler *controllers.AddonComplianceReconciler, addonConstraintController controller.Controller,
 	logger logr.Logger) {
 
 	const maxRetries = 20

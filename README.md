@@ -1,5 +1,5 @@
-[![CI](https://github.com/projectsveltos/addon-constraint-controller/actions/workflows/main.yaml/badge.svg)](https://github.com/projectsveltos/addon-constraint-controller/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/projectsveltos/addon-constraint-controller)](https://goreportcard.com/report/github.com/projectsveltos/addon-constraint-controller)
+[![CI](https://github.com/projectsveltos/addon-compliance-controller/actions/workflows/main.yaml/badge.svg)](https://github.com/projectsveltos/addon-compliance-controller/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/projectsveltos/addon-compliance-controller)](https://goreportcard.com/report/github.com/projectsveltos/addon-compliance-controller)
 [![Slack](https://img.shields.io/badge/join%20slack-%23projectsveltos-brighteen)](https://join.slack.com/t/projectsveltos/shared_invite/zt-1hraownbr-W8NTs6LTimxLPB8Erj8Q6Q)
 [![License](https://img.shields.io/badge/license-Apache-blue.svg)](LICENSE)
 
@@ -12,13 +12,13 @@ Please refere to sveltos [documentation](https://projectsveltos.github.io/svelto
 ## What this repository is
 Sveltos has the ability to deploy various types of Kubernetes addons across multiple clusters. It supports Helm charts, Kustomize files, YAMLs, Jsonnet, and Carvel ytt. Sveltos can retrieve configuration from diverse sources, including Git repositories. Prior to deploying addons, Sveltos can be directed to validate them against a predefined set of openapi rules.
 
-Within this repository, you'll find a Kubernetes controller that can fetch addon constraints from different sources and provide them to the addon controller. This enables the addon controller to validate addons before deployment, ensuring that no Kubernetes addons are deployed that violate your own rules.
+Within this repository, you'll find a Kubernetes controller that can fetch addon compliances from different sources and provide them to the addon controller. This enables the addon controller to validate addons before deployment, ensuring that no Kubernetes addons are deployed that violate your own rules.
 
 Following is an example enforcing deployments have at least 3 replicas enforced in any cluster matching the label selector `env=production`
 
 ```yaml
 apiVersion: lib.projectsveltos.io/v1alpha1
-kind: AddonConstraint
+kind: AddonCompliance
 metadata:
  name: depl-replica
 spec:

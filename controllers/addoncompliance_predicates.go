@@ -33,7 +33,7 @@ import (
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
-// ConfigMapPredicates predicates for ConfigMaps. AddonConstraintReconciler watches ConfigMap events
+// ConfigMapPredicates predicates for ConfigMaps. AddonComplianceReconciler watches ConfigMap events
 // and react to those by reconciling itself based on following predicates
 func ConfigMapPredicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
@@ -45,27 +45,27 @@ func ConfigMapPredicates(logger logr.Logger) predicate.Funcs {
 			)
 
 			if oldConfigMap == nil {
-				log.V(logs.LogVerbose).Info("Old ConfigMap is nil. Reconcile AddonConstraints.")
+				log.V(logs.LogVerbose).Info("Old ConfigMap is nil. Reconcile AddonCompliances.")
 				return true
 			}
 
 			if !reflect.DeepEqual(oldConfigMap.Data, newConfigMap.Data) {
 				log.V(logs.LogVerbose).Info(
-					"ConfigMap Data changed. Will attempt to reconcile associated AddonConstraints.",
+					"ConfigMap Data changed. Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 
 			if !reflect.DeepEqual(oldConfigMap.BinaryData, newConfigMap.BinaryData) {
 				log.V(logs.LogVerbose).Info(
-					"ConfigMap BinaryData changed. Will attempt to reconcile associated AddonConstraints.",
+					"ConfigMap BinaryData changed. Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 
 			// otherwise, return false
 			log.V(logs.LogVerbose).Info(
-				"ConfigMap did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"ConfigMap did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -80,7 +80,7 @@ func ConfigMapPredicates(logger logr.Logger) predicate.Funcs {
 	}
 }
 
-// SecretPredicates predicates for Secrets. AddonConstraintReconciler watches Secret events
+// SecretPredicates predicates for Secrets. AddonComplianceReconciler watches Secret events
 // and react to those by reconciling itself based on following predicates
 func SecretPredicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
@@ -92,20 +92,20 @@ func SecretPredicates(logger logr.Logger) predicate.Funcs {
 			)
 
 			if oldSecret == nil {
-				log.V(logs.LogVerbose).Info("Old Secret is nil. Reconcile AddonConstraints.")
+				log.V(logs.LogVerbose).Info("Old Secret is nil. Reconcile AddonCompliances.")
 				return true
 			}
 
 			if !reflect.DeepEqual(oldSecret.Data, newSecret.Data) {
 				log.V(logs.LogVerbose).Info(
-					"Secret Data changed. Will attempt to reconcile associated AddonConstraints.",
+					"Secret Data changed. Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 
 			// otherwise, return false
 			log.V(logs.LogVerbose).Info(
-				"Secret did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Secret did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -127,7 +127,7 @@ var (
 		)
 
 		log.V(logs.LogVerbose).Info(fmt.Sprintf(
-			"%s did match expected conditions.  Will attempt to reconcile associated AddonConstraints.",
+			"%s did match expected conditions.  Will attempt to reconcile associated AddonCompliances.",
 			e.Object.GetObjectKind()))
 		return true
 	}
@@ -137,7 +137,7 @@ var (
 			e.Object.GetObjectKind(), e.Object.GetName(),
 		)
 		log.V(logs.LogVerbose).Info(fmt.Sprintf(
-			"%s did match expected conditions.  Will attempt to reconcile associated AddonConstraints.",
+			"%s did match expected conditions.  Will attempt to reconcile associated AddonCompliances.",
 			e.Object.GetObjectKind()))
 		return true
 	}
@@ -147,14 +147,14 @@ var (
 			e.Object.GetObjectKind(), e.Object.GetName(),
 		)
 		log.V(logs.LogVerbose).Info(fmt.Sprintf(
-			"%s did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.",
+			"%s did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.",
 			e.Object.GetObjectKind()))
 		return false
 	}
 )
 
 // FluxSourcePredicates predicates for GitRepository/OCIRepository/Bucket.
-// AddonConstraintReconciler watches GitRepository/OCIRepository/Bucket events and
+// AddonComplianceReconciler watches GitRepository/OCIRepository/Bucket events and
 // react to those by reconciling itself based on following predicates
 func FluxSourcePredicates(s *runtime.Scheme, logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
@@ -166,13 +166,13 @@ func FluxSourcePredicates(s *runtime.Scheme, logger logr.Logger) predicate.Funcs
 
 			if hasArtifactChanged(s, e) {
 				log.V(logs.LogInfo).Info(
-					"Source artifact has changed.  Will attempt to reconcile associated AddonConstraints.")
+					"Source artifact has changed.  Will attempt to reconcile associated AddonCompliances.")
 				return true
 			}
 
 			// otherwise, return false
 			log.V(logs.LogInfo).Info(
-				"GitRepository did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"GitRepository did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -182,7 +182,7 @@ func FluxSourcePredicates(s *runtime.Scheme, logger logr.Logger) predicate.Funcs
 			)
 
 			log.V(logs.LogVerbose).Info(
-				"Source did match expected conditions.  Will attempt to reconcile associated AddonConstraints.")
+				"Source did match expected conditions.  Will attempt to reconcile associated AddonCompliances.")
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -191,7 +191,7 @@ func FluxSourcePredicates(s *runtime.Scheme, logger logr.Logger) predicate.Funcs
 				"source", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Source deleted.  Will attempt to reconcile associated AddonConstraints.")
+				"Source deleted.  Will attempt to reconcile associated AddonCompliances.")
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
@@ -200,7 +200,7 @@ func FluxSourcePredicates(s *runtime.Scheme, logger logr.Logger) predicate.Funcs
 				"source", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Source did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Source did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 	}
@@ -251,7 +251,7 @@ func isArtifactSame(oldArtifact, newArtifact *sourcev1.Artifact) bool {
 	return reflect.DeepEqual(oldArtifact, newArtifact)
 }
 
-// SveltosClusterPredicates predicates for sveltos Cluster. AddonConstraintReconciler watches sveltos Cluster events
+// SveltosClusterPredicates predicates for sveltos Cluster. AddonComplianceReconciler watches sveltos Cluster events
 // and react to those by reconciling itself based on following predicates
 func SveltosClusterPredicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
@@ -264,33 +264,33 @@ func SveltosClusterPredicates(logger logr.Logger) predicate.Funcs {
 			)
 
 			if oldCluster == nil {
-				log.V(logs.LogVerbose).Info("Old Cluster is nil. Reconcile AddonConstraint")
+				log.V(logs.LogVerbose).Info("Old Cluster is nil. Reconcile AddonCompliance")
 				return true
 			}
 
 			// return true if Cluster.Spec.Paused has changed from true to false
 			if oldCluster.Spec.Paused && !newCluster.Spec.Paused {
 				log.V(logs.LogVerbose).Info(
-					"Cluster was unpaused. Will attempt to reconcile associated AddonConstraints.")
+					"Cluster was unpaused. Will attempt to reconcile associated AddonCompliances.")
 				return true
 			}
 
 			if !oldCluster.Status.Ready && newCluster.Status.Ready {
 				log.V(logs.LogVerbose).Info(
-					"Cluster was not ready. Will attempt to reconcile associated AddonConstraints.")
+					"Cluster was not ready. Will attempt to reconcile associated AddonCompliances.")
 				return true
 			}
 
 			if !reflect.DeepEqual(oldCluster.Labels, newCluster.Labels) {
 				log.V(logs.LogVerbose).Info(
-					"Cluster labels changed. Will attempt to reconcile associated AddonConstraints.",
+					"Cluster labels changed. Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 
 			// otherwise, return false
 			log.V(logs.LogVerbose).Info(
-				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -303,12 +303,12 @@ func SveltosClusterPredicates(logger logr.Logger) predicate.Funcs {
 			// Only need to trigger a reconcile if the Cluster.Spec.Paused is false
 			if !cluster.Spec.Paused {
 				log.V(logs.LogVerbose).Info(
-					"Cluster is not paused.  Will attempt to reconcile associated AddonConstraints.",
+					"Cluster is not paused.  Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 			log.V(logs.LogVerbose).Info(
-				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -317,7 +317,7 @@ func SveltosClusterPredicates(logger logr.Logger) predicate.Funcs {
 				"cluster", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Cluster deleted.  Will attempt to reconcile associated AddonConstraints.")
+				"Cluster deleted.  Will attempt to reconcile associated AddonCompliances.")
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
@@ -326,13 +326,13 @@ func SveltosClusterPredicates(logger logr.Logger) predicate.Funcs {
 				"cluster", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 	}
 }
 
-// ClusterPredicates predicates for v1Cluster. AddonConstraintReconciler watches v1Cluster events
+// ClusterPredicates predicates for v1Cluster. AddonComplianceReconciler watches v1Cluster events
 // and react to those by reconciling itself based on following predicates
 func ClusterPredicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
@@ -345,27 +345,27 @@ func ClusterPredicates(logger logr.Logger) predicate.Funcs {
 			)
 
 			if oldCluster == nil {
-				log.V(logs.LogVerbose).Info("Old Cluster is nil. Reconcile AddonConstraint")
+				log.V(logs.LogVerbose).Info("Old Cluster is nil. Reconcile AddonCompliance")
 				return true
 			}
 
 			// return true if Cluster.Spec.Paused has changed from true to false
 			if oldCluster.Spec.Paused && !newCluster.Spec.Paused {
 				log.V(logs.LogVerbose).Info(
-					"Cluster was unpaused. Will attempt to reconcile associated AddonConstraints.")
+					"Cluster was unpaused. Will attempt to reconcile associated AddonCompliances.")
 				return true
 			}
 
 			if !reflect.DeepEqual(oldCluster.Labels, newCluster.Labels) {
 				log.V(logs.LogVerbose).Info(
-					"Cluster labels changed. Will attempt to reconcile associated AddonConstraints.",
+					"Cluster labels changed. Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 
 			// otherwise, return false
 			log.V(logs.LogVerbose).Info(
-				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -378,12 +378,12 @@ func ClusterPredicates(logger logr.Logger) predicate.Funcs {
 			// Only need to trigger a reconcile if the Cluster.Spec.Paused is false
 			if !cluster.Spec.Paused {
 				log.V(logs.LogVerbose).Info(
-					"Cluster is not paused.  Will attempt to reconcile associated AddonConstraints.",
+					"Cluster is not paused.  Will attempt to reconcile associated AddonCompliances.",
 				)
 				return true
 			}
 			log.V(logs.LogVerbose).Info(
-				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -392,7 +392,7 @@ func ClusterPredicates(logger logr.Logger) predicate.Funcs {
 				"cluster", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Cluster deleted.  Will attempt to reconcile associated AddonConstraints.")
+				"Cluster deleted.  Will attempt to reconcile associated AddonCompliances.")
 			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
@@ -401,13 +401,13 @@ func ClusterPredicates(logger logr.Logger) predicate.Funcs {
 				"cluster", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Cluster did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 	}
 }
 
-// MachinePredicates predicates for v1Machine. AddonConstraintReconciler watches v1Machine events
+// MachinePredicates predicates for v1Machine. AddonComplianceReconciler watches v1Machine events
 // and react to those by reconciling itself based on following predicates
 func MachinePredicates(logger logr.Logger) predicate.Funcs {
 	return predicate.Funcs{
@@ -424,20 +424,20 @@ func MachinePredicates(logger logr.Logger) predicate.Funcs {
 			}
 
 			if oldMachine == nil {
-				log.V(logs.LogVerbose).Info("Old Machine is nil. Reconcile AddonConstraint")
+				log.V(logs.LogVerbose).Info("Old Machine is nil. Reconcile AddonCompliance")
 				return true
 			}
 
 			// return true if Machine.Status.Phase has changed from not running to running
 			if oldMachine.Status.GetTypedPhase() != newMachine.Status.GetTypedPhase() {
 				log.V(logs.LogVerbose).Info(
-					"Machine was not in Running Phase. Will attempt to reconcile associated AddonConstraints.")
+					"Machine was not in Running Phase. Will attempt to reconcile associated AddonCompliances.")
 				return true
 			}
 
 			// otherwise, return false
 			log.V(logs.LogVerbose).Info(
-				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -453,7 +453,7 @@ func MachinePredicates(logger logr.Logger) predicate.Funcs {
 			}
 
 			log.V(logs.LogVerbose).Info(
-				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -462,7 +462,7 @@ func MachinePredicates(logger logr.Logger) predicate.Funcs {
 				"machine", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
@@ -471,7 +471,7 @@ func MachinePredicates(logger logr.Logger) predicate.Funcs {
 				"machine", e.Object.GetName(),
 			)
 			log.V(logs.LogVerbose).Info(
-				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonConstraints.")
+				"Machine did not match expected conditions.  Will not attempt to reconcile associated AddonCompliances.")
 			return false
 		},
 	}

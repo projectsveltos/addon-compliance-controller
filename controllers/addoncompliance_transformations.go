@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"fmt"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
@@ -33,13 +34,13 @@ import (
 	logs "github.com/projectsveltos/libsveltos/lib/logsettings"
 )
 
-func (r *AddonConstraintReconciler) requeueAddonConstraintForFluxSources(
-	o client.Object,
+func (r *AddonComplianceReconciler) requeueAddonComplianceForFluxSources(
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	logger := klogr.New().WithValues(
 		"objectMapper",
-		"requeueAddonConstraintForFluxSources",
+		"requeueAddonComplianceForFluxSources",
 		"reference",
 		o.GetName(),
 	)
@@ -100,13 +101,13 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForFluxSources(
 	return requests
 }
 
-func (r *AddonConstraintReconciler) requeueAddonConstraintForReference(
-	o client.Object,
+func (r *AddonComplianceReconciler) requeueAddonComplianceForReference(
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	logger := klogr.New().WithValues(
 		"objectMapper",
-		"requeueAddonConstraintForConfigMap",
+		"requeueAddonComplianceForConfigMap",
 		"reference",
 		o.GetName(),
 	)
@@ -147,8 +148,8 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForReference(
 	requests := make([]ctrl.Request, r.getReferenceMapForEntry(&key).Len())
 	consumers := r.getReferenceMapForEntry(&key).Items()
 	for i := range consumers {
-		l := logger.WithValues("addonconstraint", consumers[i].Name)
-		l.V(logs.LogDebug).Info("queuing AddonConstraint")
+		l := logger.WithValues("addoncompliance", consumers[i].Name)
+		l.V(logs.LogDebug).Info("queuing AddonCompliance")
 		requests[i] = ctrl.Request{
 			NamespacedName: client.ObjectKey{
 				Name:      consumers[i].Name,
@@ -160,14 +161,14 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForReference(
 	return requests
 }
 
-func (r *AddonConstraintReconciler) requeueAddonConstraintForCluster(
-	o client.Object,
+func (r *AddonComplianceReconciler) requeueAddonComplianceForCluster(
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	cluster := o
 	logger := klogr.New().WithValues(
 		"objectMapper",
-		"requeueAddonConstraintForCluster",
+		"requeueAddonComplianceForCluster",
 		"namespace",
 		cluster.GetNamespace(),
 		"cluster",
@@ -188,13 +189,13 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForCluster(
 
 	r.ClusterLabels[clusterInfo] = o.GetLabels()
 
-	// Get all AddonConstraint previously matching this cluster and reconcile those
+	// Get all AddonCompliance previously matching this cluster and reconcile those
 	requests := make([]ctrl.Request, r.getClusterMapForEntry(&clusterInfo).Len())
 	consumers := r.getClusterMapForEntry(&clusterInfo).Items()
 
 	for i := range consumers {
-		l := logger.WithValues("addonconstraint", consumers[i].Name)
-		l.V(logs.LogDebug).Info("queuing AddonConstraint")
+		l := logger.WithValues("addoncompliance", consumers[i].Name)
+		l.V(logs.LogDebug).Info("queuing AddonCompliance")
 		requests[i] = ctrl.Request{
 			NamespacedName: client.ObjectKey{
 				Name: consumers[i].Name,
@@ -202,14 +203,14 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForCluster(
 		}
 	}
 
-	// Iterate over all current AddonConstraint and reconcile the AddonConstraint now
+	// Iterate over all current AddonCompliance and reconcile the AddonCompliance now
 	// matching the Cluster
-	for k := range r.AddonConstraints {
-		addonConstraintSelector := r.AddonConstraints[k]
+	for k := range r.AddonCompliances {
+		addonConstraintSelector := r.AddonCompliances[k]
 		parsedSelector, _ := labels.Parse(string(addonConstraintSelector))
 		if parsedSelector.Matches(labels.Set(cluster.GetLabels())) {
 			l := logger.WithValues("addonConstraint", k.Name)
-			l.V(logs.LogDebug).Info("queuing AddonConstraint")
+			l.V(logs.LogDebug).Info("queuing AddonCompliance")
 			requests = append(requests, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Name: k.Name,
@@ -221,14 +222,14 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForCluster(
 	return requests
 }
 
-func (r *AddonConstraintReconciler) requeueAddonConstraintForMachine(
-	o client.Object,
+func (r *AddonComplianceReconciler) requeueAddonComplianceForMachine(
+	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
 	machine := o.(*clusterv1.Machine)
 	logger := klogr.New().WithValues(
 		"objectMapper",
-		"requeueAddonConstraintForMachine",
+		"requeueAddonComplianceForMachine",
 		"namespace",
 		machine.Namespace,
 		"cluster",
@@ -250,7 +251,7 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForMachine(
 
 	clusterInfo := corev1.ObjectReference{APIVersion: machine.APIVersion, Kind: "Cluster", Namespace: machine.Namespace, Name: ClusterNameLabel}
 
-	// Get all AddonConstraint previously matching this cluster and reconcile those
+	// Get all AddonCompliance previously matching this cluster and reconcile those
 	requests := make([]ctrl.Request, r.getClusterMapForEntry(&clusterInfo).Len())
 	consumers := r.getClusterMapForEntry(&clusterInfo).Items()
 
@@ -264,14 +265,14 @@ func (r *AddonConstraintReconciler) requeueAddonConstraintForMachine(
 
 	// Get Cluster labels
 	if clusterLabels, ok := r.ClusterLabels[clusterInfo]; ok {
-		// Iterate over all current AddonConstraint and reconcile the AddonConstraint now
+		// Iterate over all current AddonCompliance and reconcile the AddonCompliance now
 		// matching the Cluster
-		for k := range r.AddonConstraints {
-			addonConstraintSelector := r.AddonConstraints[k]
+		for k := range r.AddonCompliances {
+			addonConstraintSelector := r.AddonCompliances[k]
 			parsedSelector, _ := labels.Parse(string(addonConstraintSelector))
 			if parsedSelector.Matches(labels.Set(clusterLabels)) {
 				l := logger.WithValues("addonConstraint", k.Name)
-				l.V(logs.LogDebug).Info("queuing AddonConstraint")
+				l.V(logs.LogDebug).Info("queuing AddonCompliance")
 				requests = append(requests, ctrl.Request{
 					NamespacedName: client.ObjectKey{
 						Name: k.Name,

@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2/klogr"
 
-	"github.com/projectsveltos/addon-constraint-controller/controllers"
+	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
@@ -104,11 +104,11 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 			},
 		}
 
-		addonConstraint := &libsveltosv1alpha1.AddonConstraint{
+		addonConstraint := &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.AddonConstraintSpec{
+			Spec: libsveltosv1alpha1.AddonComplianceSpec{
 				ClusterSelector: selector,
 			},
 		}
@@ -130,7 +130,7 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 		}
 
 		Expect(manager.HasEntryForCluster(clusterInfo)).To(BeTrue())
-		Expect(manager.GetNumberOfAddonConstraint(clusterInfo)).To(Equal(1))
+		Expect(manager.GetNumberOfAddonCompliance(clusterInfo)).To(Equal(1))
 	})
 
 	It("annotateCluster adds annotation on cluster", func() {
@@ -199,7 +199,7 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 		Expect(manager.HasEntryForCluster(clusterInfo)).To(BeTrue())
-		Expect(manager.GetNumberOfAddonConstraint(clusterInfo)).To(Equal(0))
+		Expect(manager.GetNumberOfAddonCompliance(clusterInfo)).To(Equal(0))
 
 		// Since there is no addonConstraint matching cluster, expect cluster to have
 		// annotation now
@@ -228,12 +228,12 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 			},
 		}
 
-		// Add an AddonConstraint instance matching cluster
-		addonConstraint := &libsveltosv1alpha1.AddonConstraint{
+		// Add an AddonCompliance instance matching cluster
+		addonConstraint := &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
 			},
-			Spec: libsveltosv1alpha1.AddonConstraintSpec{
+			Spec: libsveltosv1alpha1.AddonComplianceSpec{
 				ClusterSelector: selector,
 			},
 		}
@@ -263,7 +263,7 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 		Expect(manager.HasEntryForCluster(clusterInfo)).To(BeTrue())
-		Expect(manager.GetNumberOfAddonConstraint(clusterInfo)).To(Equal(1))
+		Expect(manager.GetNumberOfAddonCompliance(clusterInfo)).To(Equal(1))
 
 		// Since there is addonConstraint matching cluster, expect cluster to NOT have
 		// annotation now
