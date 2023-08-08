@@ -238,7 +238,10 @@ var _ = Describe("AddonCompliance Controller", func() {
 			},
 		}
 
+		clusterCRD := generateTestClusterAPICRD("cluster", "clusters")
+
 		initObjects := []client.Object{
+			clusterCRD,
 			matchingCluster,
 			nonMatchingCluster,
 			addonConstraint,
