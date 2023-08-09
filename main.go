@@ -125,13 +125,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "SveltosCluster")
 		os.Exit(1)
 	}
-	if err = (&controllers.ClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Cluster")
-		os.Exit(1)
-	}
+
 	//+kubebuilder:scaffold:builder
 
 	setupChecks(mgr)
@@ -292,6 +286,13 @@ func capiWatchers(ctx context.Context, mgr ctrl.Manager,
 				err = addonConstraintReconciler.WatchForCAPI(mgr, addonConstraintController)
 				if err != nil {
 					continue
+				}
+				if err = (&controllers.ClusterReconciler{
+					Client: mgr.GetClient(),
+					Scheme: mgr.GetScheme(),
+				}).SetupWithManager(mgr); err != nil {
+					setupLog.Error(err, "unable to create controller", "controller", "Cluster")
+					os.Exit(1)
 				}
 			}
 			return
