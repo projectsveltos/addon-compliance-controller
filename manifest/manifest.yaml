@@ -353,7 +353,7 @@ spec:
         - --v=5
         command:
         - /manager
-        image: projectsveltos/addon-compliance-controller-amd64:main
+        image: projectsveltos/addon-compliance-controller-amd64:v0.16.0
         livenessProbe:
           httpGet:
             path: /healthz
