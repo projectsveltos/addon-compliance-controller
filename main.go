@@ -54,7 +54,6 @@ import (
 var (
 	setupLog             = ctrl.Log.WithName("setup")
 	metricsAddr          string
-	enableLeaderElection bool
 	probeAddr            string
 	workers              int
 	concurrentReconciles int
@@ -85,8 +84,6 @@ func main() {
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "85339645.projectsveltos.io",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -155,10 +152,6 @@ func initFlags(fs *pflag.FlagSet) {
 		"health-probe-bind-address",
 		":8081",
 		"The address the probe endpoint binds to.")
-
-	fs.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
 
 	fs.IntVar(
 		&workers,
