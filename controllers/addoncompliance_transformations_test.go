@@ -52,7 +52,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 				Namespace: randomString(),
 			},
 			Spec: libsveltosv1alpha1.AddonComplianceSpec{
-				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
+				LuaValidationRefs: []libsveltosv1alpha1.LuaValidationRef{
 					{
 						Namespace: configMap.Namespace,
 						Name:      configMap.Name,
@@ -68,7 +68,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 				Namespace: randomString(),
 			},
 			Spec: libsveltosv1alpha1.AddonComplianceSpec{
-				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
+				LuaValidationRefs: []libsveltosv1alpha1.LuaValidationRef{
 					{
 						Namespace: randomString(),
 						Name:      configMap.Name,
@@ -131,7 +131,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 				Namespace: randomString(),
 			},
 			Spec: libsveltosv1alpha1.AddonComplianceSpec{
-				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
+				LuaValidationRefs: []libsveltosv1alpha1.LuaValidationRef{
 					{
 						Namespace: gitRepo.Namespace,
 						Name:      gitRepo.Name,
@@ -147,7 +147,7 @@ var _ = Describe("AddonComplianceTransformation map functions", func() {
 				Namespace: randomString(),
 			},
 			Spec: libsveltosv1alpha1.AddonComplianceSpec{
-				OpenAPIValidationRefs: []libsveltosv1alpha1.OpenAPIValidationRef{
+				LuaValidationRefs: []libsveltosv1alpha1.LuaValidationRef{
 					{
 						Namespace: gitRepo.Namespace,
 						Name:      randomString(),

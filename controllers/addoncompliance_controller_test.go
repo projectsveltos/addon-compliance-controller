@@ -167,8 +167,13 @@ var _ = Describe("AddonCompliance Controller", func() {
 		}
 	})
 
-	It("getCurrentReferences collects all OpenAPIValidationRef referenced objects", func() {
-		addonConstraint.Spec.OpenAPIValidationRefs = []libsveltosv1alpha1.OpenAPIValidationRef{
+	It("getCurrentReferences collects all LuaValidationRefs referenced objects", func() {
+		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
+			{
+				Namespace: namespace,
+				Name:      randomString(),
+				Kind:      string(libsveltosv1alpha1.SecretReferencedResourceKind),
+			},
 			{
 				Namespace: namespace,
 				Name:      randomString(),
@@ -178,14 +183,6 @@ var _ = Describe("AddonCompliance Controller", func() {
 				Namespace: namespace,
 				Name:      randomString(),
 				Kind:      sourcev1.GitRepositoryKind,
-			},
-		}
-
-		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
-			{
-				Namespace: namespace,
-				Name:      randomString(),
-				Kind:      string(libsveltosv1alpha1.SecretReferencedResourceKind),
 			},
 		}
 
@@ -279,7 +276,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 			APIVersion: libsveltosv1alpha1.GroupVersion.String(),
 		}
 
-		addonConstraint.Spec.OpenAPIValidationRefs = []libsveltosv1alpha1.OpenAPIValidationRef{
+		addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
 			{
 				Namespace: configMap.Namespace,
 				Name:      configMap.Name,
@@ -469,27 +466,6 @@ var _ = Describe("AddonCompliance Controller", func() {
 		u, err := controllers.CollectContentOfSecret(reconciler, context.TODO(), ref, klogr.New())
 		Expect(err).To(BeNil())
 		Expect(len(u)).To(Equal(2))
-	})
-
-	It("collectOpenapiValidations updates AddonCompliance status", func() {
-		configMap := createConfigMapWithPolicy(randomString(), randomString(), []string{nameSpec, deplReplicaSpec}...)
-
-		addonConstraint.Spec.OpenAPIValidationRefs = []libsveltosv1alpha1.OpenAPIValidationRef{
-			{Namespace: configMap.Namespace, Name: configMap.Name,
-				Kind: string(libsveltosv1alpha1.ConfigMapReferencedResourceKind)},
-		}
-
-		initObjects := []client.Object{configMap, addonConstraint}
-
-		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
-		reconciler := getAddonComplianceReconciler(c)
-
-		result, err := controllers.CollectOpenapiValidations(reconciler, context.TODO(),
-			addonConstraintScope, klogr.New())
-		Expect(err).To(BeNil())
-		Expect(result).ToNot(BeNil())
-		Expect(len(result)).To(Equal(2))
 	})
 
 	It("collectLuaValidations updates AddonCompliance status", func() {
