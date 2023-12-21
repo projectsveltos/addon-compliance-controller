@@ -26,7 +26,6 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -212,14 +211,6 @@ func (r *AddonComplianceReconciler) reconcileNormal(
 	r.updateMaps(addonConstraintScope, logger)
 
 	var validations map[string][]byte
-	validations, err = r.collectOpenapiValidations(ctx, addonConstraintScope, logger)
-	if err != nil {
-		failureMsg := err.Error()
-		addonConstraintScope.SetFailureMessage(&failureMsg)
-		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
-	}
-	addonConstraintScope.AddonCompliance.Status.OpenapiValidations = validations
-
 	validations, err = r.collectLuaValidations(ctx, addonConstraintScope, logger)
 	if err != nil {
 		failureMsg := err.Error()
@@ -495,18 +486,6 @@ func (r *AddonComplianceReconciler) getMatchingClusters(ctx context.Context,
 func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *scope.AddonComplianceScope) *libsveltosset.Set {
 	currentReferences := &libsveltosset.Set{}
 
-	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
-		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Namespace
-		referencedName := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Name
-
-		apiVersion := getReferenceAPIVersion(addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind)
-		currentReferences.Insert(&corev1.ObjectReference{
-			APIVersion: apiVersion,
-			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
-			Namespace:  referencedNamespace,
-			Name:       referencedName,
-		})
-	}
 	for i := range addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs {
 		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Namespace
 		referencedName := addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Name
@@ -521,41 +500,6 @@ func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *s
 	}
 
 	return currentReferences
-}
-
-func (r *AddonComplianceReconciler) collectOpenapiValidations(ctx context.Context, addonConstraintScope *scope.AddonComplianceScope,
-	logger logr.Logger) (map[string][]byte, error) {
-
-	logger.V(logs.LogDebug).Info("collect openapi validations")
-	validations := make(map[string][]byte)
-	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
-		ref := &addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i]
-		currentValidation, err := r.collectValidations(ctx, ref.Kind, ref.Namespace, ref.Name, ref.Path, logger)
-		if err != nil {
-			return nil, err
-		}
-		for k := range currentValidation {
-			loader := &openapi3.Loader{Context: ctx, IsExternalRefsAllowed: true}
-
-			// Load the OpenAPI specification from the content
-			doc, err := loader.LoadFromData([]byte(currentValidation[k]))
-			if err != nil {
-				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to loadFromData: %v", err))
-				return nil, err
-			}
-
-			err = doc.Validate(ctx)
-			if err != nil {
-				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to validate: %v", err))
-				return nil, err
-			}
-
-			validations[k] = currentValidation[k]
-		}
-
-	}
-
-	return validations, nil
 }
 
 func (r *AddonComplianceReconciler) collectLuaValidations(ctx context.Context,
