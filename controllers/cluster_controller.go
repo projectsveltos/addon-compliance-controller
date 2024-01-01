@@ -59,30 +59,8 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		)
 	}
 
-	// Handle deleted cluster
-	if !cluster.DeletionTimestamp.IsZero() {
-		removeClusterEntry(req.Namespace, req.Name, libsveltosv1alpha1.ClusterTypeCapi)
-		return reconcile.Result{}, nil
-	}
-
-	if shouldAddClusterEntry(cluster, libsveltosv1alpha1.ClusterTypeCapi) {
-		if err := addClusterEntry(ctx, r.Client, req.Namespace, req.Name,
-			libsveltosv1alpha1.ClusterTypeCapi, cluster.Labels, logger); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		manager := GetManager()
-		clusterInfo := getClusterInfo(cluster.Namespace, cluster.Name, libsveltosv1alpha1.ClusterTypeCapi)
-		if manager.GetNumberOfAddonCompliance(clusterInfo) == 0 {
-			// if there is no AddonCompliance instance matching this cluster,
-			// cluster is ready to have addons deployed. So annotate it.
-			if err := annotateCluster(ctx, r.Client, clusterInfo); err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-	}
-
-	return reconcile.Result{}, nil
+	return reconcile.Result{},
+		reconcileClusterInstance(ctx, r.Client, cluster, libsveltosv1alpha1.ClusterTypeCapi, logger)
 }
 
 // SetupWithManager sets up the controller with the Manager.

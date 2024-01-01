@@ -20,12 +20,13 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -38,8 +39,11 @@ const addonConstraintNamePrefix = "scope-"
 var _ = Describe("AddonComplianceScope", func() {
 	var addonConstraint *libsveltosv1alpha1.AddonCompliance
 	var c client.Client
+	var logger logr.Logger
 
 	BeforeEach(func() {
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		addonConstraint = &libsveltosv1alpha1.AddonCompliance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: addonConstraintNamePrefix + randomString(),
@@ -53,7 +57,7 @@ var _ = Describe("AddonComplianceScope", func() {
 	It("Return nil,error if AddonCompliance is not specified", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client: c,
-			Logger: klogr.New(),
+			Logger: logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -64,7 +68,7 @@ var _ = Describe("AddonComplianceScope", func() {
 	It("Return nil,error if client is not specified", func() {
 		params := scope.AddonComplianceScopeParams{
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -76,7 +80,7 @@ var _ = Describe("AddonComplianceScope", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client:          c,
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -91,7 +95,7 @@ var _ = Describe("AddonComplianceScope", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client:          c,
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -105,7 +109,7 @@ var _ = Describe("AddonComplianceScope", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client:          c,
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -126,7 +130,7 @@ var _ = Describe("AddonComplianceScope", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client:          c,
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -146,7 +150,7 @@ var _ = Describe("AddonComplianceScope", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client:          c,
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)
@@ -169,7 +173,7 @@ var _ = Describe("AddonComplianceScope", func() {
 		params := scope.AddonComplianceScopeParams{
 			Client:          c,
 			AddonCompliance: addonConstraint,
-			Logger:          klogr.New(),
+			Logger:          logger,
 		}
 
 		scope, err := scope.NewAddonComplianceScope(params)

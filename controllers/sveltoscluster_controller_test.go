@@ -29,7 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -118,9 +118,11 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 			addonConstraint,
 		}
 
+		logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 		Expect(controllers.AddClusterEntry(context.TODO(), c, sveltosCluster.Namespace, sveltosCluster.Name,
-			libsveltosv1alpha1.ClusterTypeSveltos, sveltosCluster.Labels, klogr.New())).To(Succeed())
+			libsveltosv1alpha1.ClusterTypeSveltos, sveltosCluster.Labels, logger)).To(Succeed())
 
 		clusterInfo := &corev1.ObjectReference{
 			Namespace:  sveltosCluster.Namespace,
@@ -287,7 +289,7 @@ var _ = Describe("SveltosCluster Reconciler", func() {
 
 		m := manager.GetMap()
 		s := libsveltosset.Set{}
-		(*m)[*clusterInfo] = &s
+		(m)[*clusterInfo] = &s
 
 		sveltosClustertName := client.ObjectKey{
 			Name:      clusterInfo.Name,

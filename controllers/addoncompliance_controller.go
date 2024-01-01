@@ -154,7 +154,7 @@ func (r *AddonComplianceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Handle deleted addonConstraint
 	if !addonConstraint.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, addonConstraintScope)
+		return r.reconcileDelete(ctx, addonConstraintScope), nil
 	}
 
 	// Handle non-deleted addonConstraint
@@ -164,7 +164,7 @@ func (r *AddonComplianceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *AddonComplianceReconciler) reconcileDelete(
 	ctx context.Context,
 	addonConstraintScope *scope.AddonComplianceScope,
-) (reconcile.Result, error) {
+) reconcile.Result {
 
 	logger := addonConstraintScope.Logger
 	logger.V(logs.LogInfo).Info("Reconciling AddonCompliance delete")
@@ -173,7 +173,7 @@ func (r *AddonComplianceReconciler) reconcileDelete(
 
 	err := r.annotateClusters(ctx, addonConstraintScope, logger)
 	if err != nil {
-		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}
 	}
 
 	if controllerutil.ContainsFinalizer(addonConstraintScope.AddonCompliance, libsveltosv1alpha1.AddonComplianceFinalizer) {
@@ -181,7 +181,7 @@ func (r *AddonComplianceReconciler) reconcileDelete(
 	}
 
 	logger.V(logs.LogInfo).Info("Reconcile delete success")
-	return reconcile.Result{}, nil
+	return reconcile.Result{}
 }
 
 func (r *AddonComplianceReconciler) reconcileNormal(
@@ -472,7 +472,7 @@ func (r *AddonComplianceReconciler) getMatchingClusters(ctx context.Context,
 	var err error
 	if addonConstraintScope.GetSelector() != "" {
 		parsedSelector, _ := labels.Parse(addonConstraintScope.GetSelector())
-		matchingCluster, err = clusterproxy.GetMatchingClusters(ctx, r.Client, parsedSelector, logger)
+		matchingCluster, err = clusterproxy.GetMatchingClusters(ctx, r.Client, parsedSelector, "", logger)
 		if err != nil {
 			return nil, err
 		}
@@ -575,13 +575,7 @@ func (r *AddonComplianceReconciler) collectContentOfConfigMap(ctx context.Contex
 		return nil, err
 	}
 
-	var policies [][]byte
-	policies, err = collectContent(ctx, configMap.Data, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return policies, nil
+	return collectContent(configMap.Data), nil
 }
 
 func (r *AddonComplianceReconciler) collectContentOfSecret(ctx context.Context, ref *corev1.ObjectReference,
@@ -602,13 +596,7 @@ func (r *AddonComplianceReconciler) collectContentOfSecret(ctx context.Context, 
 		data[key] = string(value)
 	}
 
-	var policies [][]byte
-	policies, err = collectContent(ctx, data, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return policies, nil
+	return collectContent(data), nil
 }
 
 func (r *AddonComplianceReconciler) collectContentFromFluxSource(ctx context.Context, ref *corev1.ObjectReference,
@@ -644,13 +632,7 @@ func (r *AddonComplianceReconciler) collectContentFromFluxSource(ctx context.Con
 		return nil, err
 	}
 
-	var policies [][]byte
-	policies, err = collectContent(ctx, fileContents, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return policies, nil
+	return collectContent(fileContents), nil
 }
 
 func (r *AddonComplianceReconciler) annotateClusters(ctx context.Context,
@@ -712,7 +694,7 @@ func (r *AddonComplianceReconciler) annotateCluster(ctx context.Context,
 		if _, ok := annotations[libsveltosv1alpha1.GetClusterAnnotation()]; ok {
 			return nil
 		}
-		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = "ok"
+		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = ok
 		cluster.SetAnnotations(annotations)
 		return r.Update(ctx, cluster)
 	})

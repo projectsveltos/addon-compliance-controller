@@ -42,7 +42,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 		Expect(manager.HasEntryForCluster(cluster)).To(BeFalse())
 		s := &libsveltosset.Set{}
 		m := manager.GetMap()
-		(*m)[*cluster] = s
+		(m)[*cluster] = s
 
 		Expect(manager.HasEntryForCluster(cluster)).To(BeTrue())
 	})
@@ -78,7 +78,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 
 		s := &libsveltosset.Set{}
 		m := manager.GetMap()
-		(*m)[*cluster] = s
+		(m)[*cluster] = s
 
 		Expect(manager.HasEntryForCluster(cluster)).To(BeTrue())
 		manager.RemoveClusterEntry(cluster)
@@ -111,10 +111,10 @@ var _ = Describe("AddonCompliance Controller", func() {
 
 		m := manager.GetMap()
 		emptytSet := libsveltosset.Set{}
-		(*m)[*cluster1] = &emptytSet
+		(m)[*cluster1] = &emptytSet
 		s := libsveltosset.Set{}
 		s.Insert(addonConstraint)
-		(*m)[*cluster2] = &s
+		(m)[*cluster2] = &s
 
 		Expect(manager.GetNumberOfAddonCompliance(cluster1)).To(Equal(0))
 		Expect(manager.GetNumberOfAddonCompliance(cluster2)).To(Equal(1))
@@ -126,7 +126,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 		Expect(result).To(ContainElement(cluster2))
 
 		m = manager.GetMap()
-		Expect((*m)[*cluster2].Len()).To(BeZero())
+		Expect((m)[*cluster2].Len()).To(BeZero())
 	})
 
 	It("GetNumberOfAddonCompliance returns number of addoncompliance yet to be evaluated", func() {
@@ -149,9 +149,9 @@ var _ = Describe("AddonCompliance Controller", func() {
 		}
 
 		m := manager.GetMap()
-		(*m)[*cluster] = &libsveltosset.Set{}
+		(m)[*cluster] = &libsveltosset.Set{}
 		s := libsveltosset.Set{}
-		(*m)[*cluster] = &s
+		(m)[*cluster] = &s
 
 		s.Insert(addonConstraint1)
 		Expect(manager.GetNumberOfAddonCompliance(cluster)).To(Equal(1))
