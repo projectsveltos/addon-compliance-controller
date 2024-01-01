@@ -45,8 +45,8 @@ var (
 	WalkDir                    = walkDir
 )
 
-func (m *manager) GetMap() *map[corev1.ObjectReference]*set.Set {
-	return &m.addonConstraints
+func (m *manager) GetMap() map[corev1.ObjectReference]*set.Set {
+	return m.addonConstraints
 }
 
 func Reset() {

@@ -38,6 +38,10 @@ import (
 	libsveltosset "github.com/projectsveltos/libsveltos/lib/set"
 )
 
+const (
+	ok = "ok"
+)
+
 // SveltosClusterReconciler reconciles a SveltosCluster object
 type SveltosClusterReconciler struct {
 	client.Client
@@ -66,30 +70,8 @@ func (r *SveltosClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		)
 	}
 
-	// Handle deleted SveltosCluster
-	if !sveltosCluster.DeletionTimestamp.IsZero() {
-		removeClusterEntry(req.Namespace, req.Name, libsveltosv1alpha1.ClusterTypeSveltos)
-		return reconcile.Result{}, nil
-	}
-
-	if shouldAddClusterEntry(sveltosCluster, libsveltosv1alpha1.ClusterTypeSveltos) {
-		if err := addClusterEntry(ctx, r.Client, req.Namespace, req.Name,
-			libsveltosv1alpha1.ClusterTypeSveltos, sveltosCluster.Labels, logger); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		manager := GetManager()
-		clusterInfo := getClusterInfo(sveltosCluster.Namespace, sveltosCluster.Name, libsveltosv1alpha1.ClusterTypeSveltos)
-		if manager.GetNumberOfAddonCompliance(clusterInfo) == 0 {
-			// if there is no AddonCompliance instance matching this cluster,
-			// cluster is ready to have addons deployed. So annotate it.
-			if err := annotateCluster(ctx, r.Client, clusterInfo); err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-	}
-
-	return reconcile.Result{}, nil
+	return reconcile.Result{},
+		reconcileClusterInstance(ctx, r.Client, sveltosCluster, libsveltosv1alpha1.ClusterTypeSveltos, logger)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -100,7 +82,6 @@ func (r *SveltosClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func removeClusterEntry(clusterNamespace, clusterName string, clusterType libsveltosv1alpha1.ClusterType) {
-
 	cluster := getClusterInfo(clusterNamespace, clusterName, clusterType)
 
 	manager := GetManager()
@@ -150,6 +131,35 @@ func addClusterEntry(ctx context.Context, c client.Client,
 	return nil
 }
 
+func reconcileClusterInstance(ctx context.Context, c client.Client, cluster client.Object,
+	clusterType libsveltosv1alpha1.ClusterType, logger logr.Logger) error {
+
+	// Handle deleted SveltosCluster
+	if !cluster.GetDeletionTimestamp().IsZero() {
+		removeClusterEntry(cluster.GetNamespace(), cluster.GetName(), clusterType)
+		return nil
+	}
+
+	if shouldAddClusterEntry(cluster, clusterType) {
+		if err := addClusterEntry(ctx, c, cluster.GetNamespace(), cluster.GetName(),
+			clusterType, cluster.GetLabels(), logger); err != nil {
+			return err
+		}
+
+		manager := GetManager()
+		clusterInfo := getClusterInfo(cluster.GetNamespace(), cluster.GetName(), clusterType)
+		if manager.GetNumberOfAddonCompliance(clusterInfo) == 0 {
+			// if there is no AddonCompliance instance matching this cluster,
+			// cluster is ready to have addons deployed. So annotate it.
+			if err := annotateCluster(ctx, c, clusterInfo); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func annotateCluster(ctx context.Context, c client.Client, ref *corev1.ObjectReference) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		cluster, err := clusterproxy.GetCluster(ctx, c, ref.Namespace, ref.Name, clusterproxy.GetClusterType(ref))
@@ -166,7 +176,7 @@ func annotateCluster(ctx context.Context, c client.Client, ref *corev1.ObjectRef
 		if _, ok := annotations[libsveltosv1alpha1.GetClusterAnnotation()]; ok {
 			return nil
 		}
-		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = "ok"
+		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = ok
 		cluster.SetAnnotations(annotations)
 		return c.Update(ctx, cluster)
 	})

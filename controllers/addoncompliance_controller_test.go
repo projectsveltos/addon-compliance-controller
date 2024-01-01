@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -33,7 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	"github.com/projectsveltos/addon-compliance-controller/controllers"
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
@@ -156,8 +157,11 @@ end
 var _ = Describe("AddonCompliance Controller", func() {
 	var namespace string
 	var addonConstraint *libsveltosv1alpha1.AddonCompliance
+	var logger logr.Logger
 
 	BeforeEach(func() {
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		namespace = "reconcile" + randomString()
 
 		addonConstraint = &libsveltosv1alpha1.AddonCompliance{
@@ -188,7 +192,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		addonConstraintScope := getAddonComplianceScope(c, logger, addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
 		set := controllers.GetCurrentReferences(reconciler, addonConstraintScope)
 		Expect(set.Len()).To(Equal(3))
@@ -246,16 +250,16 @@ var _ = Describe("AddonCompliance Controller", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		addonConstraintScope := getAddonComplianceScope(c, logger, addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
 
 		// Only clusterSelector is, so only matchingCluster is a match
-		matching, err := controllers.GetMatchingClusters(reconciler, context.TODO(), addonConstraintScope, klogr.New())
+		matching, err := controllers.GetMatchingClusters(reconciler, context.TODO(), addonConstraintScope, logger)
 		Expect(err).To(BeNil())
 		Expect(len(matching)).To(Equal(1))
 	})
 
-	It("updateReferenceMap updates internal map containg mapping between AddonCompliance and referenced resources", func() {
+	It("updateReferenceMap updates internal map containing mapping between AddonCompliance and referenced resources", func() {
 		gitRepository := &corev1.ObjectReference{
 			Kind:       sourcev1.GitRepositoryKind,
 			Namespace:  namespace,
@@ -291,9 +295,9 @@ var _ = Describe("AddonCompliance Controller", func() {
 
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
 
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		addonConstraintScope := getAddonComplianceScope(c, logger, addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
-		controllers.UpdateReferenceMap(reconciler, addonConstraintScope, klogr.New())
+		controllers.UpdateReferenceMap(reconciler, addonConstraintScope, logger)
 
 		Expect(len(reconciler.ReferenceMap)).To(Equal(2))
 
@@ -316,7 +320,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 		Expect(references.Items()).To(ContainElement(*configMap))
 	})
 
-	It("updateClusterMap updates internal map containg mapping between AddonCompliance and matching clusters", func() {
+	It("updateClusterMap updates internal map containing mapping between AddonCompliance and matching clusters", func() {
 		addonConstraintInfo := &corev1.ObjectReference{
 			Namespace:  addonConstraint.Namespace,
 			Name:       addonConstraint.Name,
@@ -343,11 +347,11 @@ var _ = Describe("AddonCompliance Controller", func() {
 		}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		addonConstraintScope := getAddonComplianceScope(c, logger, addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
 
 		// Only clusterSelector is, so only matchingCluster is a match
-		controllers.UpdateClusterMap(reconciler, addonConstraintScope, klogr.New())
+		controllers.UpdateClusterMap(reconciler, addonConstraintScope, logger)
 
 		v, ok := reconciler.ClusterMap[*matchingCluster]
 		Expect(ok).To(BeTrue())
@@ -390,7 +394,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 		}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).Build()
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		addonConstraintScope := getAddonComplianceScope(c, logger, addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
 
 		addonConstraintName := types.NamespacedName{Name: addonConstraintScope.Name()}
@@ -443,7 +447,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 			Name:       configMap.Name,
 		}
 
-		u, err := controllers.CollectContentOfConfigMap(reconciler, context.TODO(), ref, klogr.New())
+		u, err := controllers.CollectContentOfConfigMap(reconciler, context.TODO(), ref, logger)
 		Expect(err).To(BeNil())
 		Expect(len(u)).To(Equal(2))
 	})
@@ -463,7 +467,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 			Name:       secret.Name,
 		}
 
-		u, err := controllers.CollectContentOfSecret(reconciler, context.TODO(), ref, klogr.New())
+		u, err := controllers.CollectContentOfSecret(reconciler, context.TODO(), ref, logger)
 		Expect(err).To(BeNil())
 		Expect(len(u)).To(Equal(2))
 	})
@@ -479,11 +483,11 @@ var _ = Describe("AddonCompliance Controller", func() {
 		initObjects := []client.Object{configMap, addonConstraint}
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
-		addonConstraintScope := getAddonComplianceScope(c, klogr.New(), addonConstraint)
+		addonConstraintScope := getAddonComplianceScope(c, logger, addonConstraint)
 		reconciler := getAddonComplianceReconciler(c)
 
 		result, err := controllers.CollectLuaValidations(reconciler, context.TODO(),
-			addonConstraintScope, klogr.New())
+			addonConstraintScope, logger)
 		Expect(err).To(BeNil())
 		Expect(result).ToNot(BeNil())
 		Expect(len(result)).To(Equal(1))
@@ -522,7 +526,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 		m := manager.GetMap()
 		s := &libsveltosset.Set{}
 		s.Insert(addonConstraintInfo)
-		(*m)[clusterRef] = s
+		(m)[clusterRef] = s
 
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(initObjects...).Build()
 		reconciler := getAddonComplianceReconciler(c)
@@ -539,7 +543,7 @@ var _ = Describe("AddonCompliance Controller", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		m = manager.GetMap()
-		v, ok := (*m)[clusterRef]
+		v, ok := (m)[clusterRef]
 		Expect(ok).To(BeTrue())
 		Expect(v.Len()).To(BeZero())
 

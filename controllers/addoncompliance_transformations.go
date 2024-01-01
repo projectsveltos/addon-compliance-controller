@@ -24,7 +24,7 @@ import (
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,12 +38,8 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForFluxSources(
 	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
-	logger := klogr.New().WithValues(
-		"objectMapper",
-		"requeueAddonComplianceForFluxSources",
-		"reference",
-		o.GetName(),
-	)
+	logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))).WithValues(
+		"reference", fmt.Sprintf("%s/%s", o.GetNamespace(), o.GetName()))
 
 	logger.V(logs.LogDebug).Info("reacting to flux source change")
 
@@ -105,12 +101,8 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForReference(
 	ctx context.Context, o client.Object,
 ) []reconcile.Request {
 
-	logger := klogr.New().WithValues(
-		"objectMapper",
-		"requeueAddonComplianceForConfigMap",
-		"reference",
-		o.GetName(),
-	)
+	logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))).WithValues(
+		"reference", fmt.Sprintf("%s/%s", o.GetNamespace(), o.GetName()))
 
 	logger.V(logs.LogDebug).Info("reacting to configMap/secret change")
 
@@ -166,14 +158,8 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForCluster(
 ) []reconcile.Request {
 
 	cluster := o
-	logger := klogr.New().WithValues(
-		"objectMapper",
-		"requeueAddonComplianceForCluster",
-		"namespace",
-		cluster.GetNamespace(),
-		"cluster",
-		cluster.GetName(),
-	)
+	logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))).WithValues(
+		"cluster", fmt.Sprintf("%s/%s", cluster.GetNamespace(), cluster.GetName()))
 
 	logger.V(logs.LogDebug).Info("reacting to Cluster change")
 
@@ -227,14 +213,8 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForMachine(
 ) []reconcile.Request {
 
 	machine := o.(*clusterv1.Machine)
-	logger := klogr.New().WithValues(
-		"objectMapper",
-		"requeueAddonComplianceForMachine",
-		"namespace",
-		machine.Namespace,
-		"cluster",
-		machine.Name,
-	)
+	logger := textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))).WithValues(
+		"machine", fmt.Sprintf("%s/%s", machine.GetNamespace(), machine.GetName()))
 
 	addTypeInformationToObject(r.Scheme, machine)
 

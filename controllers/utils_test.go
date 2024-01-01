@@ -22,7 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 
 	"github.com/projectsveltos/addon-compliance-controller/controllers"
 )
@@ -46,12 +46,12 @@ var _ = Describe("Utilities", func() {
 
 		for _, f := range files {
 			filePath := filepath.Join(dir, f.name)
-			err = os.WriteFile(filePath, []byte(f.content), 0644)
+			err = os.WriteFile(filePath, []byte(f.content), 0600)
 			Expect(err).To(BeNil())
 		}
 
 		var policies map[string]string
-		policies, err = controllers.WalkDir(dir, klogr.New())
+		policies, err = controllers.WalkDir(dir, textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1))))
 		Expect(err).To(BeNil())
 		Expect(len(policies)).To(Equal(2))
 	})

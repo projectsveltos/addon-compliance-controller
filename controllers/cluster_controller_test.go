@@ -168,7 +168,7 @@ var _ = Describe("Cluster Reconciler", func() {
 
 		m := manager.GetMap()
 		s := libsveltosset.Set{}
-		(*m)[*clusterInfo] = &s
+		(m)[*clusterInfo] = &s
 
 		clustertName := client.ObjectKey{
 			Name:      clusterInfo.Name,

@@ -160,7 +160,6 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 
 	Byf("Verifying AddonCompliance %s Status", addonConstraint.Name)
 	Eventually(func() bool {
-		currentAddonCompliance := &libsveltosv1alpha1.AddonCompliance{}
 		err := k8sClient.Get(context.TODO(),
 			types.NamespacedName{Name: addonConstraint.Name},
 			currentAddonCompliance)
