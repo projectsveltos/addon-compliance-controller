@@ -32,111 +32,63 @@ import (
 )
 
 var (
-	appLabel = `openapi: 3.0.0
-info:
-  title: Kubernetes Deployment Label Validation
-  version: 1.0.0
+	appLabel = `function evaluate()
+  local hs = {}
+  hs.valid = true
+  hs.message = ""
 
-components:
-  schemas:
-    Deployment:
-      type: object
-      properties:
-        metadata:
-          type: object
-          properties:
-            labels:
-              type: object
-              additionalProperties:
-                type: string
-      required:
-        - metadata
-    DeploymentWithAppLabel:
-      allOf:
-        - $ref: '#/components/schemas/Deployment'
-        - properties:
-            metadata:
-              properties:
-                labels:
-                  type: object
-                  additionalProperties:
-                    type: string
-                  required:
-                    - app
-              required:
-                - labels                    
-      required:
-        - metadata
+  local deployments = {}
+  local pattern = "^prod"
+  
+  -- Separate deployments and services from the resources
+  for _, resource in ipairs(resources) do
+    if resource.kind == "Deployment" then
+      table.insert(deployments, resource)
+    end
+  end
 
-paths:
-  /apis/apps/v1/namespaces/{namespace}/deployments/{deployment}:
-    post:
-      parameters:
-        - in: path
-          name: namespace
-          required: true
-          schema:
-            type: string
-            minimum: 1
-          description: The namespace of the resource
-        - in: path
-          name: deployment
-          required: true
-          schema:
-            type: string
-            minimum: 1
-          description: The name of the resource
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeploymentWithAppLabel'
-      responses:
-        '200':
-          description: Valid Deployment with "app" label provided
-        '400':
-          description: Invalid Deployment, missing or incorrect "app" label
+  -- Check for each deployment if there is a 'app' label
+  for _, deployment in ipairs(deployments) do
+    if deployment.metadata.labels == nil then
+	  hs.valid = false
+	else if not deployment.metadata.labels['app'] then
+	  hs.valid = false
+	end
+  end
+
+  return hs
+end`
+
+	deploymentReplicaCheck = `
+function evaluate()
+  local hs = {}
+  hs.valid = true
+  hs.message = ""
+
+  local deployments = {}
+  local pattern = "^prod"
+  
+  -- Separate deployments and services from the resources
+  for _, resource in ipairs(resources) do
+    if resource.kind == "Deployment" then
+      table.insert(deployments, resource)
+    end
+  end
+
+  -- Check for each deployment if there is a matching service
+  for _, deployment in ipairs(deployments) do
+    local deploymentInfo = deployment.metadata.namespace .. "/" .. deployment.metadata.name
+    
+    if not string.match(deployment.metadata.name, pattern) then
+      hs.message = "No matching service found for deployment: " .. deploymentInfo
+      hs.valid = false
+      break
+    end
+  end
+
+  return hs
+end
 `
-
-	deplNameSpecificNamespace = `openapi: 3.0.0
-info:
-  title: Kubernetes Replica Validation
-  version: 1.0.0
-
-paths:
-  /apis/apps/v1/namespaces/production/deployments/{deployment}:
-    post:
-      parameters:
-        - in: path
-          name: deployment
-          required: true
-          schema:
-            type: string
-            minimum: 1
-          description: The name of the resource
-      summary: Create/Update a new deployment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Deployment'
-      responses:
-        '200':
-          description: OK
-
-components:
-  schemas:
-    Deployment:
-      type: object
-      properties:
-        metadata:
-          type: object
-          properties:
-            name:
-              type: string
-              maxLength: 10`
 )
 
 var _ = Describe("AddonCompliance with ConfigMap", Serial, func() {
@@ -144,8 +96,8 @@ var _ = Describe("AddonCompliance with ConfigMap", Serial, func() {
 		namePrefix = "cm-"
 	)
 
-	It("Process a ConfigMap with Openapi policies", Label("FV"), func() {
-		configMap := createConfigMapWithPolicy(randomString(), randomString(), []string{appLabel, deplNameSpecificNamespace}...)
+	It("Process a ConfigMap with Lua policies", Label("FV"), func() {
+		configMap := createConfigMapWithPolicy(randomString(), randomString(), []string{appLabel, deploymentReplicaCheck}...)
 		verifyYttSourceWithConfigMap(namePrefix, configMap, 2)
 	})
 })
@@ -164,7 +116,7 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 
 	Byf("Creating a AddonCompliance referencing this ConfigMap")
 	addonConstraint := getAddonCompliance(namePrefix, map[string]string{key: value})
-	addonConstraint.Spec.OpenAPIValidationRefs = []libsveltosv1alpha1.OpenAPIValidationRef{
+	addonConstraint.Spec.LuaValidationRefs = []libsveltosv1alpha1.LuaValidationRef{
 		{
 			Namespace: configMap.Namespace,
 			Name:      configMap.Name,
@@ -182,18 +134,18 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 		if err != nil {
 			return false
 		}
-		if currentAddonCompliance.Status.OpenapiValidations == nil {
+		if currentAddonCompliance.Status.LuaValidations == nil {
 			return false
 		}
 		return true
 	}, timeout, pollingInterval).Should(BeTrue())
 
-	Byf("Verifying AddonCompliance %s Status.OpenapiValidations", addonConstraint.Name)
+	Byf("Verifying AddonCompliance %s Status.LuaValidations", addonConstraint.Name)
 	currentAddonCompliance := &libsveltosv1alpha1.AddonCompliance{}
 	Expect(k8sClient.Get(context.TODO(),
 		types.NamespacedName{Namespace: addonConstraint.Namespace, Name: addonConstraint.Name},
 		currentAddonCompliance)).To(Succeed())
-	Expect(len(currentAddonCompliance.Status.OpenapiValidations)).To(Equal(expectedResources))
+	Expect(len(currentAddonCompliance.Status.LuaValidations)).To(Equal(expectedResources))
 
 	Byf("Verifying AddonCompliance %s Status.MatchingClusterRefs", addonConstraint.Name)
 	Expect(len(currentAddonCompliance.Status.MatchingClusterRefs)).To(Equal(1))
@@ -208,17 +160,16 @@ func verifyYttSourceWithConfigMap(namePrefix string, configMap *corev1.ConfigMap
 
 	Byf("Verifying AddonCompliance %s Status", addonConstraint.Name)
 	Eventually(func() bool {
-		currentAddonCompliance := &libsveltosv1alpha1.AddonCompliance{}
 		err := k8sClient.Get(context.TODO(),
 			types.NamespacedName{Name: addonConstraint.Name},
 			currentAddonCompliance)
 		if err != nil {
 			return false
 		}
-		if currentAddonCompliance.Status.OpenapiValidations == nil {
+		if currentAddonCompliance.Status.LuaValidations == nil {
 			return false
 		}
-		return len(currentAddonCompliance.Status.OpenapiValidations) == 1
+		return len(currentAddonCompliance.Status.LuaValidations) == 1
 	}, timeout, pollingInterval).Should(BeTrue())
 
 	Byf("Deleting AddonCompliance %s", addonConstraint.Name)

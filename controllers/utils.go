@@ -166,7 +166,7 @@ func removeCommentsAndEmptyLines(text string) string {
 // data might have one or more keys. Each key might contain a single policy
 // or multiple policies separated by '---'
 // Returns an error if one occurred. Otherwise it returns a slice of []byte.
-func collectContent(ctx context.Context, data map[string]string, logger logr.Logger) ([][]byte, error) {
+func collectContent(data map[string]string) [][]byte {
 	policies := make([][]byte, 0)
 
 	for k := range data {
@@ -181,7 +181,7 @@ func collectContent(ctx context.Context, data map[string]string, logger logr.Log
 		}
 	}
 
-	return policies, nil
+	return policies
 }
 
 func prepareFileSystemWithFluxSource(ctx context.Context, c client.Client,

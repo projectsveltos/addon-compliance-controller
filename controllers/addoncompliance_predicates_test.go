@@ -26,7 +26,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2/klogr"
+	"k8s.io/klog/v2/textlogger"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
@@ -34,16 +34,21 @@ import (
 	libsveltosv1alpha1 "github.com/projectsveltos/libsveltos/api/v1alpha1"
 )
 
+const (
+	namespacePrefix = "predicates"
+)
+
 var _ = Describe("AddonCompliance Predicates: SvelotsClusterPredicates", func() {
 	var logger logr.Logger
 	var cluster *libsveltosv1alpha1.SveltosCluster
 
 	BeforeEach(func() {
-		logger = klogr.New()
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		cluster = &libsveltosv1alpha1.SveltosCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
-				Namespace: "predicates" + randomString(),
+				Namespace: namespacePrefix + randomString(),
 			},
 		}
 	})
@@ -198,11 +203,11 @@ var _ = Describe("AddonCompliance Predicates: ClusterPredicates", func() {
 	var cluster *clusterv1.Cluster
 
 	BeforeEach(func() {
-		logger = klogr.New()
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
 		cluster = &clusterv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
-				Namespace: "predicates" + randomString(),
+				Namespace: namespacePrefix + randomString(),
 			},
 		}
 	})
@@ -333,11 +338,12 @@ var _ = Describe("AddonCompliance Predicates: MachinePredicates", func() {
 	var machine *clusterv1.Machine
 
 	BeforeEach(func() {
-		logger = klogr.New()
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		machine = &clusterv1.Machine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      randomString(),
-				Namespace: "predicates" + randomString(),
+				Namespace: namespacePrefix + randomString(),
 			},
 		}
 	})
@@ -441,7 +447,8 @@ var _ = Describe("AddonCompliance Predicates: ConfigMapPredicates", func() {
 	var configMap *corev1.ConfigMap
 
 	BeforeEach(func() {
-		logger = klogr.New()
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		configMap = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
@@ -536,7 +543,8 @@ var _ = Describe("AddonCompliance Predicates: SecretPredicates", func() {
 	var secret *corev1.Secret
 
 	BeforeEach(func() {
-		logger = klogr.New()
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		secret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: randomString(),
@@ -611,11 +619,12 @@ var _ = Describe("AddonCompliance Predicates: FluxSourcePredicates", func() {
 	var gitRepository *sourcev1.GitRepository
 
 	BeforeEach(func() {
-		logger = klogr.New()
+		logger = textlogger.NewLogger(textlogger.NewConfig(textlogger.Verbosity(1)))
+
 		gitRepository = &sourcev1.GitRepository{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "flux" + randomString(),
-				Namespace: "predicates" + randomString(),
+				Namespace: namespacePrefix + randomString(),
 			},
 		}
 

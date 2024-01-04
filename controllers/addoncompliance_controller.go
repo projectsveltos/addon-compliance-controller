@@ -26,7 +26,6 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -155,7 +154,7 @@ func (r *AddonComplianceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Handle deleted addonConstraint
 	if !addonConstraint.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, addonConstraintScope)
+		return r.reconcileDelete(ctx, addonConstraintScope), nil
 	}
 
 	// Handle non-deleted addonConstraint
@@ -165,7 +164,7 @@ func (r *AddonComplianceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *AddonComplianceReconciler) reconcileDelete(
 	ctx context.Context,
 	addonConstraintScope *scope.AddonComplianceScope,
-) (reconcile.Result, error) {
+) reconcile.Result {
 
 	logger := addonConstraintScope.Logger
 	logger.V(logs.LogInfo).Info("Reconciling AddonCompliance delete")
@@ -174,7 +173,7 @@ func (r *AddonComplianceReconciler) reconcileDelete(
 
 	err := r.annotateClusters(ctx, addonConstraintScope, logger)
 	if err != nil {
-		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}, nil
+		return reconcile.Result{Requeue: true, RequeueAfter: deleteRequeueAfter}
 	}
 
 	if controllerutil.ContainsFinalizer(addonConstraintScope.AddonCompliance, libsveltosv1alpha1.AddonComplianceFinalizer) {
@@ -182,7 +181,7 @@ func (r *AddonComplianceReconciler) reconcileDelete(
 	}
 
 	logger.V(logs.LogInfo).Info("Reconcile delete success")
-	return reconcile.Result{}, nil
+	return reconcile.Result{}
 }
 
 func (r *AddonComplianceReconciler) reconcileNormal(
@@ -212,14 +211,6 @@ func (r *AddonComplianceReconciler) reconcileNormal(
 	r.updateMaps(addonConstraintScope, logger)
 
 	var validations map[string][]byte
-	validations, err = r.collectOpenapiValidations(ctx, addonConstraintScope, logger)
-	if err != nil {
-		failureMsg := err.Error()
-		addonConstraintScope.SetFailureMessage(&failureMsg)
-		return reconcile.Result{Requeue: true, RequeueAfter: normalRequeueAfter}, nil
-	}
-	addonConstraintScope.AddonCompliance.Status.OpenapiValidations = validations
-
 	validations, err = r.collectLuaValidations(ctx, addonConstraintScope, logger)
 	if err != nil {
 		failureMsg := err.Error()
@@ -481,7 +472,7 @@ func (r *AddonComplianceReconciler) getMatchingClusters(ctx context.Context,
 	var err error
 	if addonConstraintScope.GetSelector() != "" {
 		parsedSelector, _ := labels.Parse(addonConstraintScope.GetSelector())
-		matchingCluster, err = clusterproxy.GetMatchingClusters(ctx, r.Client, parsedSelector, logger)
+		matchingCluster, err = clusterproxy.GetMatchingClusters(ctx, r.Client, parsedSelector, "", logger)
 		if err != nil {
 			return nil, err
 		}
@@ -495,18 +486,6 @@ func (r *AddonComplianceReconciler) getMatchingClusters(ctx context.Context,
 func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *scope.AddonComplianceScope) *libsveltosset.Set {
 	currentReferences := &libsveltosset.Set{}
 
-	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
-		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Namespace
-		referencedName := addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Name
-
-		apiVersion := getReferenceAPIVersion(addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind)
-		currentReferences.Insert(&corev1.ObjectReference{
-			APIVersion: apiVersion,
-			Kind:       addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i].Kind,
-			Namespace:  referencedNamespace,
-			Name:       referencedName,
-		})
-	}
 	for i := range addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs {
 		referencedNamespace := addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Namespace
 		referencedName := addonConstraintScope.AddonCompliance.Spec.LuaValidationRefs[i].Name
@@ -521,41 +500,6 @@ func (r *AddonComplianceReconciler) getCurrentReferences(addonConstraintScope *s
 	}
 
 	return currentReferences
-}
-
-func (r *AddonComplianceReconciler) collectOpenapiValidations(ctx context.Context, addonConstraintScope *scope.AddonComplianceScope,
-	logger logr.Logger) (map[string][]byte, error) {
-
-	logger.V(logs.LogDebug).Info("collect openapi validations")
-	validations := make(map[string][]byte)
-	for i := range addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs {
-		ref := &addonConstraintScope.AddonCompliance.Spec.OpenAPIValidationRefs[i]
-		currentValidation, err := r.collectValidations(ctx, ref.Kind, ref.Namespace, ref.Name, ref.Path, logger)
-		if err != nil {
-			return nil, err
-		}
-		for k := range currentValidation {
-			loader := &openapi3.Loader{Context: ctx, IsExternalRefsAllowed: true}
-
-			// Load the OpenAPI specification from the content
-			doc, err := loader.LoadFromData([]byte(currentValidation[k]))
-			if err != nil {
-				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to loadFromData: %v", err))
-				return nil, err
-			}
-
-			err = doc.Validate(ctx)
-			if err != nil {
-				logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to validate: %v", err))
-				return nil, err
-			}
-
-			validations[k] = currentValidation[k]
-		}
-
-	}
-
-	return validations, nil
 }
 
 func (r *AddonComplianceReconciler) collectLuaValidations(ctx context.Context,
@@ -631,13 +575,7 @@ func (r *AddonComplianceReconciler) collectContentOfConfigMap(ctx context.Contex
 		return nil, err
 	}
 
-	var policies [][]byte
-	policies, err = collectContent(ctx, configMap.Data, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return policies, nil
+	return collectContent(configMap.Data), nil
 }
 
 func (r *AddonComplianceReconciler) collectContentOfSecret(ctx context.Context, ref *corev1.ObjectReference,
@@ -658,13 +596,7 @@ func (r *AddonComplianceReconciler) collectContentOfSecret(ctx context.Context, 
 		data[key] = string(value)
 	}
 
-	var policies [][]byte
-	policies, err = collectContent(ctx, data, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return policies, nil
+	return collectContent(data), nil
 }
 
 func (r *AddonComplianceReconciler) collectContentFromFluxSource(ctx context.Context, ref *corev1.ObjectReference,
@@ -700,13 +632,7 @@ func (r *AddonComplianceReconciler) collectContentFromFluxSource(ctx context.Con
 		return nil, err
 	}
 
-	var policies [][]byte
-	policies, err = collectContent(ctx, fileContents, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return policies, nil
+	return collectContent(fileContents), nil
 }
 
 func (r *AddonComplianceReconciler) annotateClusters(ctx context.Context,
@@ -768,7 +694,7 @@ func (r *AddonComplianceReconciler) annotateCluster(ctx context.Context,
 		if _, ok := annotations[libsveltosv1alpha1.GetClusterAnnotation()]; ok {
 			return nil
 		}
-		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = "ok"
+		annotations[libsveltosv1alpha1.GetClusterAnnotation()] = ok
 		cluster.SetAnnotations(annotations)
 		return r.Update(ctx, cluster)
 	})
