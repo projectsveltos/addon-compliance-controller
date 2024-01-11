@@ -193,7 +193,12 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForCluster(
 	// matching the Cluster
 	for k := range r.AddonCompliances {
 		addonConstraintSelector := r.AddonCompliances[k]
-		parsedSelector, _ := labels.Parse(string(addonConstraintSelector))
+		parsedSelector, err := labels.Parse(string(addonConstraintSelector))
+		if err != nil {
+			// When clusterSelector is fixed, this AddonCompliance instance
+			// will be reconciled
+			continue
+		}
 		if parsedSelector.Matches(labels.Set(cluster.GetLabels())) {
 			l := logger.WithValues("addonConstraint", k.Name)
 			l.V(logs.LogDebug).Info("queuing AddonCompliance")
@@ -249,7 +254,12 @@ func (r *AddonComplianceReconciler) requeueAddonComplianceForMachine(
 		// matching the Cluster
 		for k := range r.AddonCompliances {
 			addonConstraintSelector := r.AddonCompliances[k]
-			parsedSelector, _ := labels.Parse(string(addonConstraintSelector))
+			parsedSelector, err := labels.Parse(string(addonConstraintSelector))
+			if err != nil {
+				// When clusterSelector is fixed, this AddonCompliance instance
+				// will be reconciled
+				continue
+			}
 			if parsedSelector.Matches(labels.Set(clusterLabels)) {
 				l := logger.WithValues("addonConstraint", k.Name)
 				l.V(logs.LogDebug).Info("queuing AddonCompliance")

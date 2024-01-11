@@ -118,7 +118,11 @@ func addClusterEntry(ctx context.Context, c client.Client,
 	s := &libsveltosset.Set{}
 	for i := range addonConstraints.Items {
 		ac := &addonConstraints.Items[i]
-		parsedSelector, _ := labels.Parse(string(ac.Spec.ClusterSelector))
+		parsedSelector, err := labels.Parse(string(ac.Spec.ClusterSelector))
+		if err != nil {
+			logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to parse clusterSelector: %v", err))
+			return err
+		}
 		if parsedSelector.Matches(labels.Set(clusterLabels)) {
 			s.Insert(getKeyFromObject(c.Scheme(), ac))
 		}
