@@ -469,9 +469,13 @@ func (r *AddonComplianceReconciler) getMatchingClusters(ctx context.Context,
 
 	logger.V(logs.LogDebug).Info("finding matching clusters")
 	var matchingCluster []corev1.ObjectReference
-	var err error
+
 	if addonConstraintScope.GetSelector() != "" {
-		parsedSelector, _ := labels.Parse(addonConstraintScope.GetSelector())
+		parsedSelector, err := labels.Parse(addonConstraintScope.GetSelector())
+		if err != nil {
+			logger.V(logs.LogInfo).Info(fmt.Sprintf("failed to parse clusterSelector: %v", err))
+			return nil, err
+		}
 		matchingCluster, err = clusterproxy.GetMatchingClusters(ctx, r.Client, parsedSelector, "", logger)
 		if err != nil {
 			return nil, err
