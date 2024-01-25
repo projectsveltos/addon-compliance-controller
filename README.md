@@ -9,6 +9,10 @@
 
 Please refere to sveltos [documentation](https://projectsveltos.github.io/sveltos/).
 
+## Archived
+This repository (sveltos addon compliance) is archived and is no longer actively maintained. The code is still available for reference, but no new features or bug fixes will be added.
+
+
 ## What this repository is
 Sveltos has the ability to deploy various types of Kubernetes addons across multiple clusters. It supports Helm charts, Kustomize files, YAMLs, Jsonnet, and Carvel ytt. Sveltos can retrieve configuration from diverse sources, including Git repositories. Prior to deploying addons, Sveltos can be directed to validate them against a predefined set of openapi rules.
 
